@@ -1,0 +1,32 @@
+{
+  "_note": "repo=null betyder: koden er ikke pushet endnu. Sæt repo til 'Dani-gh1/<navn>' og kør 'python3 -m hub fetch'.",
+  "bots": [
+    {"key": "atlas",    "name": "Atlas AI",    "repo": null, "port": 8801, "tabs": []},
+    {"key": "meridian", "name": "Meridian AI", "repo": null, "port": 8802, "tabs": []},
+    {"key": "comet",    "name": "Comet AI",    "repo": null, "port": 8803, "tabs": []},
+    {"key": "delphi",   "name": "Delphi AI",   "repo": "Dani-gh1/Delphi-AI", "port": 8804,
+     "desc": "Polymarket og Kalshi",
+     "launch": {"kind": "patch", "config": "desk.config", "args": ["serve"], "also": [["run"]]},
+     "hide": "nav[role=tablist]",
+     "tabs": [["oversigt", "Oversigt", "[data-tab=oversigt]"], ["strategier", "Strategier", "[data-tab=strategier]"],
+              ["handler", "Handler", "[data-tab=handler]"], ["regler", "Regler", "[data-tab=regler]"]]},
+    {"key": "quasar",   "name": "Quasar AI",   "repo": "Dani-gh1/Quasar-AI", "port": 8805,
+     "desc": "Krypto-perpetuals",
+     "launch": {"kind": "patch", "config": "desk.config", "args": ["run"]},
+     "hide": "header nav, body > nav, nav",
+     "tabs": [["oversigt", "Oversigt", "[data-tab=oversigt]"], ["strategier", "Strategier", "[data-tab=strategier]"],
+              ["handler", "Handler", "[data-tab=handler]"], ["regler", "Regler", "[data-tab=regler]"]]},
+    {"key": "orion",    "name": "Orion AI",    "repo": "Dani-gh1/Orion-AI", "port": 8806,
+     "desc": "Store kryptovalutaer på Binance",
+     "launch": {"kind": "patch", "config": "config", "args": ["run"]},
+     "hide": "#tabs",
+     "tabs": [["oversigt", "Oversigt", "[data-t=oversigt]"], ["strategier", "Strategier", "[data-t=strategier]"],
+              ["handler", "Handler", "[data-t=handler]"], ["regler", "Regler", "[data-t=regler]"]]},
+    {"key": "nova",     "name": "Nova AI",     "repo": "Dani-gh1/Coins", "port": 8807,
+     "desc": "Solana-memecoins",
+     "launch": {"kind": "flag", "args": ["run", "--dashboard", "{port}"]},
+     "hide": "#tabs",
+     "tabs": [["overblik", "Overblik", "#tab-overblik"], ["handler", "Handler", "#tab-handler"],
+              ["marked", "Marked", "#tab-marked"], ["desk", "Desk", "#tab-desk"]]}
+  ]
+}

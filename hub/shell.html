@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Papirdesk Hub</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#14171c;--mute:#667085;--line:#dfe3ea;--acc:#2f6fed;--ok:#1a9d5b;--off:#b42318;--warn:#b7791f}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1218;--card:#171b23;--ink:#e8ebf1;--mute:#8d96a7;--line:#2a303c;--acc:#6b9bff;--ok:#3ccf86;--off:#ff7b6e;--warn:#e5b45a}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column}
+header{background:var(--card);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px 0}
+.top h1{font-size:16px;margin:0}
+.badge{font-size:11px;font-weight:600;color:var(--warn);border:1px solid var(--warn);border-radius:99px;padding:1px 8px;white-space:nowrap}
+.bar{display:flex;gap:2px;overflow-x:auto;padding:6px 12px 0;scrollbar-width:none}
+.bar::-webkit-scrollbar{display:none}
+.bar button{font:inherit;color:var(--mute);background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.bar button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.bar button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px;border-radius:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mute)}
+.dot.up{background:var(--ok)}.dot.down{background:var(--off)}
+#sub{background:var(--bg);border-bottom:1px solid var(--line);padding:6px 12px;gap:6px}
+#sub button{border:1px solid var(--line);border-radius:99px;padding:4px 14px;background:var(--card)}
+#sub button[aria-selected=true]{background:var(--acc);border-color:var(--acc);color:#fff}
+main{flex:1;min-height:0;position:relative}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
+.msg{max-width:520px;margin:12vh auto;padding:0 16px;text-align:center}
+.msg h2{margin:0 0 8px}.msg p{color:var(--mute);margin:6px 0}
+code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>Papirdesk Hub</h1><span class="badge">KUN PAPIRHANDEL · fiktive penge</span></div>
+  <nav class="bar" id="tabs" role="tablist" aria-label="Botter"></nav>
+</header>
+<nav class="bar" id="sub" role="tablist" aria-label="Underfaner" hidden></nav>
+<main>
+  <iframe id="frame" title="Dashboard" hidden></iframe>
+  <div class="msg" id="msg" hidden></div>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let BOTS = [], cur = null, curSub = null;
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  e.append(...kids);
+  return e;
+}
+function route() { const [b, s] = location.hash.slice(1).split("/"); return [b, s]; }
+function setRoute(b, s) { history.replaceState(null, "", "#" + b + (s ? "/" + s : "")); }
+
+function drawTabs() {
+  $("tabs").replaceChildren(...BOTS.map((b) => {
+    const state = !b.configured ? "" : b.up ? "up" : "down";
+    const btn = el("button", { role: "tab", "aria-selected": String(b.key === cur?.key), type: "button" },
+      el("span", { class: "dot " + state }), b.name);
+    btn.onclick = () => selectBot(b.key);
+    return btn;
+  }));
+}
+function drawSub() {
+  const row = $("sub");
+  const tabs = cur && cur.configured && cur.up ? cur.tabs : [];
+  row.hidden = tabs.length === 0;
+  row.replaceChildren(...tabs.map(([id, label]) => {
+    const btn = el("button", { role: "tab", type: "button", "aria-selected": String(id === curSub) }, label);
+    btn.onclick = () => selectSub(id);
+    return btn;
+  }));
+}
+function message(html) {
+  $("frame").hidden = true; $("msg").hidden = false; $("msg").innerHTML = html;
+}
+function selectBot(key, sub) {
+  cur = BOTS.find((b) => b.key === key) || BOTS[0];
+  curSub = sub || cur.tabs[0]?.[0] || null;
+  setRoute(cur.key, curSub);
+  drawTabs(); drawSub();
+  if (!cur.configured) {
+    return message(`<h2>${cur.name}</h2><p>Koden er ikke koblet på endnu.</p>
+      <p>Sæt <code>repo</code> for <code>${cur.key}</code> i <code>bots.json</code> og kør <code>python3 -m hub fetch</code>.</p>`);
+  }
+  if (!cur.up) {
+    return message(`<h2>${cur.name} kører ikke</h2><p>Start den med <code>python3 -m hub run</code>.</p>`);
+  }
+  $("msg").hidden = true; $("frame").hidden = false;
+  const url = "/b/" + cur.key + "/";
+  if (!$("frame").src.endsWith(url)) $("frame").src = url; else applySub();
+}
+function selectSub(id) { curSub = id; setRoute(cur.key, id); drawSub(); applySub(); }
+
+// Klik på botens egen fane inde i iframen (samme oprindelse via hubbens proxy).
+// Nogle dashboards bygger fanerne med JS, så vi prøver igen i et par sekunder.
+function applySub(tries = 0) {
+  const tab = cur?.tabs.find((t) => t[0] === curSub);
+  if (!tab) return;
+  let node = null;
+  try { node = $("frame").contentDocument.querySelector(tab[2]); } catch (e) {}
+  if (node) node.click();
+  else if (tries < 30) setTimeout(() => applySub(tries + 1), 100);
+}
+$("frame").addEventListener("load", () => applySub());
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/bots", { cache: "no-store" });
+    if (!r.ok) throw 0;
+    const next = await r.json();
+    const wasUp = cur?.up;
+    BOTS = next;
+    if (cur) cur = BOTS.find((b) => b.key === cur.key);
+    drawTabs();
+    if (cur && cur.up !== wasUp && !(cur.up && wasUp)) selectBot(cur.key, curSub);
+  } catch (e) { /* hubben er midlertidigt væk – prøv igen næste gang */ }
+}
+
+(async function init() {
+  await refresh();
+  const [b, s] = route();
+  const first = BOTS.find((x) => x.key === b) || BOTS.find((x) => x.configured && x.up) || BOTS[0];
+  if (first) selectBot(first.key, s);
+  setInterval(refresh, 10000);
+})();
+addEventListener("hashchange", () => { const [b, s] = route(); if (b && (b !== cur?.key || s !== curSub)) selectBot(b, s); });
+</script>
+</body>
+</html>
