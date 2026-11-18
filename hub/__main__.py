@@ -30,7 +30,11 @@ def commands(bot: dict) -> list[list[str]]:
     if ln["kind"] == "flag":
         return [[sys.executable, "-m", "desk", *[a.format(port=port) for a in ln["args"]]]]
     out = []
-    for args in [ln["args"], *ln.get("also", [])]:
+    all_args = [ln["args"], *ln.get("also", [])]
+    if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
+        all_args = [ln["fallback_args"]]   # fx kun dashboardet, når datakildens nøgle mangler
+        print(f"· {bot['name']}: {ln['needs_env']} er ikke sat – viser kun dashboardet (ingen live handler)")
+    for args in all_args:
         code = ("import sys, runpy, importlib; c = importlib.import_module(%r); "
                 "c.DASHBOARD_PORT = %d; c.DASHBOARD_HOST = '127.0.0.1'; "
                 "sys.argv = ['desk'] + %r; runpy.run_module('desk', run_name='__main__')"
