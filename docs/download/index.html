@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Download Hub AI</title>
+<meta name="description" content="Hent Hub AI: installér på din server, hent koden eller læg dashboardet på hjemmeskærmen.">
+<meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Download Hub AI"><meta property="og:image" content="https://dani-gh1.github.io/Hub-AI/assets/og-image.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml"><link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="brand" href="../"><img src="../assets/logo.svg" alt="">Hub AI</a>
+    <div class="links"><a href="../">Åbn</a><a href="./" aria-current="page">Download</a></div>
+  </nav>
+
+  <header class="hero" style="padding-bottom:8px">
+    <h1>Hent <em>Hub AI</em></h1>
+    <p class="lead">Tre måder: lad den køre af sig selv på en server, hent koden, eller læg dashboardet på telefonens hjemmeskærm.</p>
+  </header>
+
+  <h2 class="sec" id="server">1 · Installér på din server <span class="badge" style="margin:0 0 0 8px;vertical-align:middle">Anbefalet</span></h2>
+  <p class="sub">Så kører alt døgnet rundt uden, at du skal gøre noget: starter ved boot, genstarter botter, der går ned, og opdaterer sig selv.</p>
+  <div class="card">
+    <ol class="steps">
+      <li><div><b>Log ind på din server</b><span>Med SSH, som du plejer. Det kræver Linux (Ubuntu), Python 3.11 eller nyere og git.</span></div></li>
+      <li><div><b>Kør installationen</b><span>Én kommando. Scriptet sætter alt op og skriver adressen og en adgangskode ud til sidst.</span>
+        <div class="code"><code id="c1">git clone https://github.com/Dani-gh1/Hub-AI.git &amp;&amp; cd Hub-AI &amp;&amp; ./deploy/install.sh</code><button type="button" data-copy="c1">Kopiér</button></div></div></li>
+      <li><div><b>Åbn dashboardet</b><span>Gå til <a href="../">forsiden</a>, skriv serverens adresse, og du er inde.</span></div></li>
+    </ol>
+    <p class="hint">Glemt adgangskoden? Den står i filen <code>/etc/hub.env</code> på serveren.</p>
+  </div>
+
+  <h2 class="sec" id="kode">2 · Hent koden</h2>
+  <p class="sub">Til at prøve den på en Mac eller Linux-computer. Computeren skal være tændt, for at botterne kører.</p>
+  <div class="two">
+    <div class="card">
+      <div class="dl"><a class="btn" href="https://github.com/Dani-gh1/Hub-AI/archive/refs/heads/main.zip" download>⬇ Download .zip</a>
+        <span class="meta">Hele programmet, ca. 1 MB.<br><a href="https://github.com/Dani-gh1/Hub-AI">Se på GitHub</a></span></div>
+    </div>
+    <div class="card">
+      <b>Så kører du den</b>
+      <div class="code"><code id="c2">cd Hub-AI
+python3 -m hub fetch
+python3 -m hub run</code><button type="button" data-copy="c2">Kopiér</button></div>
+      <p class="hint" style="margin-top:0">Åbn derefter <code>http://127.0.0.1:8080</code>.</p>
+    </div>
+  </div>
+
+  <h2 class="sec" id="hjemmeskaerm">3 · Læg den på hjemmeskærmen</h2>
+  <p class="sub">Dashboardet er bygget til telefonen: egen app-ikon, ingen browserlinje og en menu i bunden.</p>
+  <div class="card">
+    <div class="tabs" role="tablist" aria-label="Enhed">
+      <button type="button" role="tab" aria-selected="true" data-p="ios">iPhone / iPad</button>
+      <button type="button" role="tab" aria-selected="false" data-p="android">Android</button>
+      <button type="button" role="tab" aria-selected="false" data-p="pc">Computer</button>
+    </div>
+    <div class="panel" id="p-ios"><ol class="steps">
+      <li><div><b>Åbn dit dashboard i Safari</b><span>Brug den adresse, du gemte på <a href="../">forsiden</a>. Det skal være Safari, ikke en anden browser.</span></div></li>
+      <li><div><b>Tryk på Del-knappen</b><span>Firkanten med pilen op, nederst på skærmen (eller øverst på iPad).</span></div></li>
+      <li><div><b>Vælg “Føj til hjemmeskærm”</b><span>Rul lidt ned i listen, hvis du ikke kan se den. Tryk <b>Tilføj</b>.</span></div></li>
+    </ol></div>
+    <div class="panel" id="p-android" hidden><ol class="steps">
+      <li><div><b>Åbn dit dashboard i Chrome</b><span>Brug den adresse, du gemte på <a href="../">forsiden</a>.</span></div></li>
+      <li><div><b>Tryk på menuen ⋮</b><span>De tre prikker øverst til højre.</span></div></li>
+      <li><div><b>Vælg “Føj til startskærm” eller “Installér app”</b><span>Bekræft med <b>Tilføj</b>. Ikonet ligger nu mellem dine andre apps.</span></div></li>
+    </ol></div>
+    <div class="panel" id="p-pc" hidden><ol class="steps">
+      <li><div><b>Chrome eller Edge</b><span>Tryk på installér-ikonet yderst til højre i adresselinjen, eller menu → “Gem og del” → “Installér som app”.</span></div></li>
+      <li><div><b>Safari på Mac</b><span>Arkiv → <b>Føj til Dock</b>.</span></div></li>
+    </ol></div>
+    <p class="hint">Ligger serveren bag Tailscale, skal Tailscale være tændt på telefonen, for at appen kan åbne.</p>
+  </div>
+
+  <footer>Hub AI · Kun papirhandel med fiktive penge · <a href="../">Åbn dashboard</a> · <a href="https://github.com/Dani-gh1/Hub-AI">GitHub</a></footer>
+</div>
+<script>
+"use strict";
+document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
+  const text = document.getElementById(b.dataset.copy).innerText.replace(/ /g, " ");
+  try { await navigator.clipboard.writeText(text); } catch (e) {
+    const t = document.createElement("textarea"); t.value = text; document.body.append(t); t.select();
+    try { document.execCommand("copy"); } catch (_) {} t.remove();
+  }
+  const old = b.textContent; b.textContent = "Kopieret ✓"; setTimeout(() => (b.textContent = old), 1600);
+}));
+const tabs = [...document.querySelectorAll(".tabs button")];
+function pick(id) {
+  tabs.forEach((t) => t.setAttribute("aria-selected", String(t.dataset.p === id)));
+  ["ios", "android", "pc"].forEach((p) => (document.getElementById("p-" + p).hidden = p !== id));
+}
+tabs.forEach((t) => t.addEventListener("click", () => pick(t.dataset.p)));
+if (/android/i.test(navigator.userAgent)) pick("android"); else if (!/iphone|ipad|ipod|macintosh/i.test(navigator.userAgent) && !/mobile/i.test(navigator.userAgent)) pick("pc");
+</script>
+</body>
+</html>

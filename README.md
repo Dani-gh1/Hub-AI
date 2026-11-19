@@ -37,6 +37,17 @@ og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ stand
 
 Første fane er **Overblik** for alle botter: en tabel over, om de kører, og en tabel med hver bots bedste strategi.
 
+## Hjemmeside, hjemmeskærm og download
+
+* **Indgang:** `docs/` er en lille hjemmeside (GitHub Pages) på <https://dani-gh1.github.io/Hub-AI/>. Skriv serverens
+  adresse én gang, så åbner den dit dashboard med ét tryk (adressen gemmes kun i din egen browser). Et delbart link:
+  `…/Hub-AI/?server=<adresse>`. Siden `…/Hub-AI/download/` har installation, zip og trin til hjemmeskærmen.
+* **Som app på telefonen:** åbn dashboardet, og vælg *Føj til hjemmeskærm* (iPhone: Del-knappen i Safari, Android: menuen ⋮).
+  Dashboardet har eget ikon (`hub/static/`), manifest, plads til notch og hjemmebjælke og en menu i bunden på telefon.
+* **Logo og ikoner:** kilderne er `hub/static/*.svg`. `node tools/icons.js` og `node tools/og.js` tegner PNG-filerne igen
+  (kræver `playwright`).
+* **GitHub Pages slås til** under *Settings → Pages → Branch: main, mappe: /docs*.
+
 ## Kør 24/7 uden at gøre noget
 
 Hubben skal køre på en maskine, der altid er tændt, fx en Linux-server hos Oracle Cloud (en MacBook går i dvale).

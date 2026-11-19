@@ -91,6 +91,33 @@ class HubTests(unittest.TestCase):
             urllib.request.urlopen(base + "/b/ukendt/")
         self.assertEqual(e.exception.code, 404)
 
+    def test_static_files_and_manifest_are_open_but_confined(self):
+        import os
+        os.environ["HUB_PASSWORD"] = "hemmelig"
+        try:
+            hub = start(make_handler([]))
+        finally:
+            del os.environ["HUB_PASSWORD"]
+        base = f"http://127.0.0.1:{hub.server_port}"
+        man = urllib.request.urlopen(base + "/manifest.webmanifest")            # uden login: telefonen henter den uden
+        self.assertEqual(man.headers["Content-Type"], "application/manifest+json")
+        data = json.load(man)
+        self.assertEqual((data["display"], data["start_url"]), ("standalone", "/"))
+        sizes = {(i["sizes"], i["purpose"]) for i in data["icons"]}
+        self.assertEqual(sizes, {("192x192", "any"), ("512x512", "any"), ("512x512", "maskable")})
+        for icon in data["icons"]:                                              # alle ikoner i manifestet findes
+            r = urllib.request.urlopen(base + icon["src"])
+            self.assertEqual((r.status, r.headers["Content-Type"]), (200, "image/png"))
+            self.assertTrue(r.read().startswith(b"\x89PNG"))
+        self.assertEqual(urllib.request.urlopen(base + "/static/logo.svg").headers["Content-Type"], "image/svg+xml")
+        for bad in ("/static/../server.py", "/static/..%2fserver.py", "/static/shell.html", "/static/nope.png", "/static/"):
+            with self.assertRaises(urllib.error.HTTPError, msg=bad) as e:
+                urllib.request.urlopen(base + bad)
+            self.assertEqual(e.exception.code, 404, bad)
+        with self.assertRaises(urllib.error.HTTPError) as e:                    # selve dashboardet kræver stadig login
+            urllib.request.urlopen(base + "/api/bots")
+        self.assertEqual(e.exception.code, 401)
+
     def test_password(self):
         import base64, os
         os.environ["HUB_PASSWORD"] = "hemmelig"

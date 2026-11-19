@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hub AI – alle dine botter ét sted</title>
+<meta name="description" content="Strategier, regler, desk og handler for syv papirhandels-botter i ét dashboard. Kun papirhandel med fiktive penge.">
+<meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Hub AI"><meta property="og:description" content="Alle dine papirhandels-botter ét sted.">
+<meta property="og:image" content="https://dani-gh1.github.io/Hub-AI/assets/og-image.png"><meta property="og:type" content="website">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hub AI">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="brand" href="./"><img src="assets/logo.svg" alt="">Hub AI</a>
+    <div class="links"><a href="./" aria-current="page">Åbn</a><a href="download/">Download</a></div>
+  </nav>
+
+  <header class="hero">
+    <img class="big" src="assets/logo.svg" alt="Hub AI-logo">
+    <h1>Alle dine botter.<br><em>Ét dashboard.</em></h1>
+    <p class="lead">Strategier, regler, desk og handler for syv papirhandels-botter samlet ét sted, og lavet til telefonen.</p>
+    <span class="badge">Kun papirhandel · fiktive penge</span>
+  </header>
+
+  <section class="card launch" id="launch" aria-labelledby="lt">
+    <div id="saved" class="saved">
+      <h2 id="lt">Velkommen tilbage</h2>
+      <p>Dit dashboard ligger på <span class="addr" id="addr"></span></p>
+      <a class="btn big" id="open" href="#">Åbn dashboard →</a>
+      <div class="count" id="count"></div>
+      <div class="linkrow"><button type="button" id="change">Skift adresse</button><button type="button" id="auto"></button></div>
+    </div>
+    <form id="setup" autocomplete="off">
+      <h2>Åbn dit dashboard</h2>
+      <p>Skriv adressen til din server én gang. Så er det et tryk næste gang.</p>
+      <div class="row">
+        <input type="text" id="input" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="fx 100.64.0.1:8080" aria-label="Serverens adresse">
+        <button class="btn" type="submit">Gem og åbn</button>
+      </div>
+      <p class="hint" id="err" role="alert" style="color:var(--warn);display:none"></p>
+      <p class="hint">Adressen gemmes kun i din egen browser og sendes aldrig nogen steder hen. Ligger serveren bag Tailscale, skal Tailscale være tændt på telefonen.</p>
+    </form>
+  </section>
+
+  <section class="grid" aria-label="Det kan du">
+    <div class="card feat"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-7"/></svg><h3>Overblik</h3><p>Alle strategier i én tabel og en glat graf over afkast.</p></div>
+    <div class="card feat"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><h3>Strategier</h3><p>Hver strategi med tal og sine egne regler.</p></div>
+    <div class="card feat"><svg viewBox="0 0 24 24"><path d="M5 4h14v6H5zM5 14h14v6H5zM8.5 7h.01M8.5 17h.01"/></svg><h3>Desk</h3><p>Hvordan botten arbejder: status, filtre og agenternes regler.</p></div>
+    <div class="card feat"><svg viewBox="0 0 24 24"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg><h3>Handler</h3><p>Åbne og lukkede handler, filtrerbare pr. strategi.</p></div>
+  </section>
+
+  <section class="card" style="margin-bottom:8px">
+    <h2 style="margin:0 0 6px;font-size:19px">Læg den på hjemmeskærmen</h2>
+    <p class="sub" style="margin:0 0 14px">Åbn dashboardet, tryk på <b>Del</b> (iPhone) eller menuen <b>⋮</b> (Android), og vælg <b>Føj til hjemmeskærm</b>. Så åbner den som en rigtig app uden browserlinje.</p>
+    <a class="btn ghost" href="download/#hjemmeskaerm">Se trin for trin</a>
+  </section>
+
+  <footer>Hub AI · Kun papirhandel med fiktive penge · <a href="download/">Download</a> · <a href="https://github.com/Dani-gh1/Hub-AI">GitHub</a></footer>
+</div>
+<script>
+"use strict";
+const K = { addr: "hub.addr", auto: "hub.auto" };
+const $ = (id) => document.getElementById(id);
+const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const set = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+let timer = null;
+
+function clean(raw) {                       // "100.64.0.1" -> "http://100.64.0.1:8080/"
+  let s = String(raw || "").trim().replace(/\s+/g, "");
+  if (!s) return null;
+  const scheme = /^https:\/\//i.test(s) ? "https" : "http";
+  s = s.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  if (!/^[A-Za-z0-9.-]+(:\d{1,5})?$/.test(s)) return null;
+  if (!/:\d+$/.test(s) && scheme === "http") s += ":8080";
+  return { shown: scheme === "https" ? `https://${s}` : s, url: `${scheme}://${s}/` };
+}
+function show() {
+  const saved = clean(get(K.addr));
+  $("saved").style.display = saved ? "block" : "none";
+  $("setup").style.display = saved ? "none" : "block";
+  if (!saved) return;
+  $("addr").textContent = saved.shown; $("open").href = saved.url;
+  const auto = get(K.auto) !== "off";
+  $("auto").textContent = auto ? "Åbn ikke automatisk" : "Åbn automatisk";
+  clearInterval(timer); $("count").style.display = "none";
+  const stay = new URLSearchParams(location.search).has("stay") || location.hash === "#stay";
+  if (auto && !stay) {
+    let n = 3; $("count").style.display = "block";
+    const tick = () => { $("count").textContent = `Åbner om ${n} … (tryk “Skift adresse” for at blive her)`; if (n-- <= 0) { clearInterval(timer); location.href = saved.url; } };
+    tick(); timer = setInterval(tick, 1000);
+  }
+}
+$("setup").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const c = clean($("input").value);
+  if (!c) { $("err").textContent = "Det ligner ikke en adresse. Skriv fx 100.64.0.1:8080 eller serverens navn."; $("err").style.display = "block"; return; }
+  set(K.addr, c.url); location.href = c.url;
+});
+$("change").addEventListener("click", () => { clearInterval(timer); set(K.addr, null); $("input").value = ""; show(); $("input").focus(); });
+$("auto").addEventListener("click", () => { set(K.auto, get(K.auto) === "off" ? "on" : "off"); clearInterval(timer); history.replaceState(null, "", "#stay"); show(); });
+// Et delbart link med adressen i: .../Hub-AI/?server=100.64.0.1:8080
+const q = new URLSearchParams(location.search).get("server");
+if (q && clean(q)) { set(K.addr, clean(q).url); history.replaceState(null, "", location.pathname); }
+show();
+</script>
+</body>
+</html>

@@ -18,6 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SHELL = Path(__file__).with_name("shell.html")
+STATIC = Path(__file__).with_name("static")
+STATIC_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json", ".ico": "image/x-icon"}
 
 
 def load_bots(path: Path | None = None) -> list[dict]:
@@ -112,9 +114,8 @@ def make_handler(bots: list[dict]):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            for k, v in (extra or {}).items():
+            headers = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", **(extra or {})}
+            for k, v in headers.items():
                 self.send_header(k, v)
             self.end_headers()
             self.wfile.write(body)
@@ -135,6 +136,12 @@ def make_handler(bots: list[dict]):
             path, _, query = self.path.partition("?")
             if path == "/healthz":
                 return self._send(200, "text/plain", b"ok")
+            name = "manifest.webmanifest" if path == "/manifest.webmanifest" else path[8:] if path.startswith("/static/") else None
+            if name is not None:        # logo og manifest er ikke hemmelige, og telefonen henter dem uden login
+                f = STATIC / name
+                if re.fullmatch(r"[A-Za-z0-9._-]+", name) and f.suffix in STATIC_TYPES and f.is_file():
+                    return self._send(200, STATIC_TYPES[f.suffix], f.read_bytes(), {"Cache-Control": "public, max-age=86400"})
+                return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
             if not self._authorized():
                 return self._send(401, "text/plain", b"login", {"WWW-Authenticate": 'Basic realm="hub"'})
             try:

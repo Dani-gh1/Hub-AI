@@ -2,8 +2,19 @@
 <html lang="da">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Papirdesk Hub</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hub AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<title>Hub AI</title>
 <style>
 :root{
   --bg:#f6f7fb;--surface:#fff;--ink:#0f172a;--ink2:#475569;--mute:#94a3b8;--line:#e8ebf2;--soft:#f1f4f9;
@@ -15,26 +26,27 @@
   --bg:#0b0e14;--surface:#141821;--ink:#eef1f7;--ink2:#a7b0c0;--mute:#667085;--line:#222836;--soft:#1a1f2b;
   --acc:#8b8bff;--pos:#3ddc97;--neg:#ff6b70;--warn:#e5b45a;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 28px -14px rgba(0,0,0,.6);--grey:#3a4254}}
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;min-height:100vh}
 button,select,input{font:inherit;color:inherit}
+button{touch-action:manipulation}
 a{color:inherit}
 .num{font-variant-numeric:tabular-nums}
 .pos{color:var(--pos)}.neg{color:var(--neg)}.mute{color:var(--mute)}
 
 /* ---------- top ---------- */
-header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);
+header{position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);
   -webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid var(--line)}
-.bar{max-width:1120px;margin:0 auto;padding:0 20px}
+.bar{max-width:1120px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-right)) 0 max(20px,env(safe-area-inset-left))}
 .brand{display:flex;align-items:center;gap:12px;padding:14px 0 10px}
-.logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--acc),#a78bfa);box-shadow:0 4px 12px -4px var(--acc)}
+.logo{width:30px;height:30px;border-radius:9px;display:block;box-shadow:0 4px 12px -4px var(--acc)}
 .brand b{font-size:16px;letter-spacing:-.01em}
 .badge{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent);border-radius:99px;padding:3px 10px;white-space:nowrap}
 .scroller{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:12px}
 .scroller::-webkit-scrollbar{display:none}
-.pill{flex:1 1 auto;border:0;background:transparent;color:var(--ink2);padding:7px 12px;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.25;
+.pill{user-select:none;-webkit-user-select:none;flex:1 1 auto;border:0;background:transparent;color:var(--ink2);padding:7px 12px;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.25;
   white-space:nowrap;transition:background .18s,color .18s,box-shadow .18s}
 .pill:hover{background:var(--soft)}
 .pill[aria-selected=true]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:var(--shadow),0 0 0 1px var(--line)}
@@ -43,6 +55,7 @@ header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 8
 .dot.up{background:var(--pos);box-shadow:0 0 0 3px color-mix(in srgb,var(--pos) 18%,transparent)}.dot.down{background:var(--neg)}
 .subbar{border-top:1px solid var(--line)}
 .subs{display:flex;gap:4px}
+.sub svg{display:none}
 .sub{border:0;background:none;padding:11px 14px;color:var(--ink2);cursor:pointer;position:relative;transition:color .18s}
 .sub:hover{color:var(--ink)}
 .sub[aria-selected=true]{color:var(--ink);font-weight:600}
@@ -133,7 +146,19 @@ a.ext{font-size:13px;color:var(--ink2);text-decoration:none;border:1px solid var
 a.ext:hover{color:var(--ink);background:var(--soft)}
 
 @media (max-width:720px){
-  main{padding:16px 14px 48px}.bar{padding:0 14px}.card{padding:16px}
+  main{padding:16px max(14px,env(safe-area-inset-right)) calc(88px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+  .bar{padding:0 max(14px,env(safe-area-inset-right)) 0 max(14px,env(safe-area-inset-left))}.card{padding:16px}
+  .brand{padding:10px 0 8px}.scroller{padding-bottom:10px;scroll-snap-type:x proximity}.pill{scroll-snap-align:start;padding:7px 11px}
+  /* underfanerne som bundmenu, som i en rigtig app. En forælder med backdrop-filter ville fange den faste menu, så den fjernes her */
+  header{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}
+  .subbar{position:fixed;left:0;right:0;bottom:0;z-index:30;border:0;border-top:1px solid var(--line);
+    background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);
+    padding-bottom:env(safe-area-inset-bottom)}
+  .subbar .bar{padding:0}.subs{display:grid;grid-template-columns:repeat(4,1fr);gap:0;overflow:visible}
+  .sub{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 8px;font-size:11px;color:var(--mute)}
+  .sub svg{display:block;width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .sub[aria-selected=true]{color:var(--acc)}.sub[aria-selected=true]::after{display:none}
+  .tools input,.tools select{font-size:16px}
   .badge{display:none}
   .pill{flex:none}
   .chart{height:260px}
@@ -150,7 +175,7 @@ a.ext:hover{color:var(--ink);background:var(--soft)}
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><div class="logo" aria-hidden="true"></div><b>Papirdesk</b><span class="badge">Kun papirhandel · fiktive penge</span></div>
+    <div class="brand"><img class="logo" src="/static/logo.svg" width="30" height="30" alt=""><b>Hub AI</b><span class="badge">Kun papirhandel · fiktive penge</span></div>
     <nav class="scroller" id="tabs" role="tablist" aria-label="Botter"></nav>
   </div>
   <div class="subbar" id="subbar" hidden>
@@ -161,7 +186,8 @@ a.ext:hover{color:var(--ink);background:var(--soft)}
 
 <script>
 "use strict";
-const SUBS = [["overblik", "Overblik"], ["strategier", "Strategier"], ["desk", "Desk"], ["handler", "Handler"]];
+const SUBS = [["overblik", "Overblik", "M4 19V5M4 19h16M8 15l3-4 3 2 5-7"], ["strategier", "Strategier", "M4 6h16M4 12h16M4 18h10"],
+  ["desk", "Desk", "M5 4h14v6H5zM5 14h14v6H5zM8.5 7h.01M8.5 17h.01"], ["handler", "Handler", "M7 7h11l-3-3M17 17H6l3 3"]];
 const OV = "overblik";
 const PALETTE = ["#5b5bf0", "#f59e0b", "#10b981", "#ec4899", "#0ea5e9", "#8b5cf6", "#ef4444", "#14b8a6"];
 const $ = (id) => document.getElementById(id);
@@ -195,8 +221,8 @@ function drawTabs() {
   $("tabs").replaceChildren(mk(OV, "Overblik", null),
     ...BOTS.map((b) => mk(b.key, b.name, !b.configured ? "" : b.up ? "up" : "down", b.short)));
   $("subbar").hidden = curKey === OV;
-  $("subs").replaceChildren(...SUBS.map(([id, text]) => h("button", { class: "sub", role: "tab", type: "button",
-    "aria-selected": String(id === curSub), onclick: () => go(curKey, id) }, text)));
+  $("subs").replaceChildren(...SUBS.map(([id, text, icon]) => h("button", { class: "sub", role: "tab", type: "button",
+    "aria-selected": String(id === curSub), onclick: () => go(curKey, id) }, sv("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, sv("path", { d: icon })), text)));
 }
 function go(key, sub) {
   curKey = key; curSub = key === OV ? "" : (SUBS.some((s) => s[0] === sub) ? sub : "overblik");
