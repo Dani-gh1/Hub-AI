@@ -9,10 +9,11 @@ OS="${HUB_OS:-$(uname -s)}"
 if [ "$OS" = Darwin ]; then ENV_FILE="${HUB_ENV_FILE:-$HOME/Library/Application Support/Hub AI/hub.env}"; else ENV_FILE="${HUB_ENV_FILE:-/etc/hub.env}"; fi
 [ -f "$ENV_FILE" ] || { echo "Fandt ikke $ENV_FILE. Kør først ./deploy/install.sh"; exit 1; }
 SUDO=""; [ -w "$ENV_FILE" ] || SUDO="sudo"
+READ=""; [ -r "$ENV_FILE" ] || READ="sudo"
 
 setvar() {   # setvar NAVN VÆRDI  (erstatter eller tilføjer linjen)
   local tmp; tmp="$(mktemp)"
-  { grep -v "^$1=" "$ENV_FILE" || true; echo "$1=$2"; } > "$tmp"
+  { $READ grep -v "^$1=" "$ENV_FILE" || true; echo "$1=$2"; } > "$tmp"
   $SUDO sh -c "cat '$tmp' > '$ENV_FILE'"; rm -f "$tmp"
 }
 service_loaded() {
@@ -29,10 +30,10 @@ restart() {
     if [ "$OS" = Darwin ]; then echo "    ./deploy/run-mac.sh        (lad Terminal-vinduet stå åbent)"; else echo "    sudo systemctl start hub"; fi
   fi
 }
-host() { grep '^HUB_HOST=' "$ENV_FILE" | cut -d= -f2; }
-pw() { grep '^HUB_PASSWORD=' "$ENV_FILE" | cut -d= -f2-; }
+host() { $READ grep '^HUB_HOST=' "$ENV_FILE" | cut -d= -f2; }
+pw() { $READ grep '^HUB_PASSWORD=' "$ENV_FILE" | cut -d= -f2-; }
 
-public() { [ "$(grep '^HUB_PUBLIC=' "$ENV_FILE" | cut -d= -f2)" = 1 ] && [ "$(grep '^HUB_OPEN=' "$ENV_FILE" | cut -d= -f2)" != 1 ]; }
+public() { [ "$($READ grep '^HUB_PUBLIC=' "$ENV_FILE" | cut -d= -f2)" = 1 ] && [ "$($READ grep '^HUB_OPEN=' "$ENV_FILE" | cut -d= -f2)" != 1 ]; }
 case "${1:-show}" in
   off|local) if public; then echo "✗ Dashboardet er åbent for hele internettet, så adgangskoden kan ikke slås fra. Kør først: ./deploy/public.sh off"; exit 1; fi ;;
 esac

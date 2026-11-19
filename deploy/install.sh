@@ -112,6 +112,11 @@ if [ "$DRY" != 1 ]; then
   [ -n "$others" ] && { echo "• Der kører allerede andre desk-tjenester:"; echo "$others" | sed 's/^/    /'; echo "  Hubben starter sine egne kopier af de øvrige botter (hver med egen database). Stop de gamle, hvis du ikke vil have dem to gange."; }
 fi
 
+# --- aktie-botten (Atlas) bruger tidszoner (New York), som kræver systemets tidszonedatabase ---
+if [ ! -e /usr/share/zoneinfo/America/New_York ] && [ "$DRY" != 1 ] && command -v apt-get >/dev/null 2>&1; then
+  echo "• Installerer tidszonedatabasen (tzdata), som aktie-botten skal bruge"; apt-get install -y -qq tzdata >/dev/null 2>&1 || echo "! Kunne ikke installere tzdata: kør selv  sudo apt-get install -y tzdata"
+fi
+
 # --- hent botterne ---
 if [ -n "$NOVA_PORT" ]; then export HUB_EXTERNAL_NOVA="$NOVA_PORT"; fi
 ( cd "$HUB_DIR" && as_user env ${HUB_EXTERNAL_NOVA:+HUB_EXTERNAL_NOVA="$HUB_EXTERNAL_NOVA"} "$PY" -m hub fetch )
@@ -126,7 +131,8 @@ if [ -n "$NOVA_PORT" ]; then
   add HUB_EXTERNAL_NOVA "$NOVA_PORT"; add HUB_UPDATE_NOVA_DIR "$NOVA_DIR"; add HUB_UPDATE_NOVA_SERVICE "$NOVA_SERVICE"
   add HUB_UPDATE_NOVA_BRANCH "$(as_user git -C "$NOVA_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 fi
-grep -q 'OANDA_TOKEN=' "$ENV_FILE" || echo '#OANDA_TOKEN=   # valgfri: giver Atlas og Meridian rigtig bid/ask. Uden den bruger de Yahoo Finance' >> "$ENV_FILE"
+grep -q 'OANDA_TOKEN=' "$ENV_FILE" || echo '#OANDA_TOKEN=   # valgfri: giver Meridian rigtig bid/ask. Uden den bruger den Yahoo Finance' >> "$ENV_FILE"
+chown "root:$RUN_USER" "$ENV_FILE" 2>/dev/null && chmod 640 "$ENV_FILE"       # ejeren kan læse (og `hub status` kan se indstillingerne); andre kan ikke
 
 # --- systemd ---
 sub() { sed -e "s#@USER@#$RUN_USER#g" -e "s#@DIR@#$HUB_DIR#g" -e "s#@PY@#$PY#g" "$1" > "$UNIT_DIR/$(basename "$1")"; }

@@ -16,8 +16,9 @@ TS="${HUB_TAILSCALE:-$(command -v tailscale || true)}"
 [ -n "$TS" ] || { [ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ] && TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale; }
 [ -n "$TS" ] || { echo "Tailscale er ikke installeret her. Hent det på https://tailscale.com/download og log ind, og kør så scriptet igen."; exit 1; }
 
-getvar() { grep "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- || true; }
-setvar() { local tmp; tmp="$(mktemp)"; { grep -v "^$1=" "$ENV_FILE" || true; echo "$1=$2"; } > "$tmp"; $SUDO sh -c "cat '$tmp' > '$ENV_FILE'"; rm -f "$tmp"; }
+READ=""; [ -r "$ENV_FILE" ] || READ="sudo"          # /etc/hub.env kan kun læses af root, hvis den er fra en ældre installation
+getvar() { $READ grep "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- || true; }
+setvar() { local tmp; tmp="$(mktemp)"; { $READ grep -v "^$1=" "$ENV_FILE" || true; echo "$1=$2"; } > "$tmp"; $SUDO sh -c "cat '$tmp' > '$ENV_FILE'"; rm -f "$tmp"; }
 service_loaded() {
   if [ "$OS" = Darwin ]; then launchctl print "gui/$(id -u)/ai.hub.dashboard" >/dev/null 2>&1; else systemctl is-active --quiet hub 2>/dev/null; fi
 }
@@ -101,6 +102,6 @@ case "${1:-status}" in
     MODE="fra"; [ "$(getvar HUB_PUBLIC)" = 1 ] && MODE="internettet, $([ "$(getvar HUB_OPEN)" = 1 ] && echo "uden adgangskode" || echo "med adgangskode")"
     [ "$MODE" = fra ] && [ -n "$(serve_url)" ] && MODE="privat (kun dine egne enheder med Tailscale)"
     echo "Adgang: $MODE   Vært: $(getvar HUB_HOST)   Port: $PORT"
-    echo "Adresse: $(funnel_url || true)$(serve_url || true)" ;;
+    echo "Adresse: $( { funnel_url; serve_url; } 2>/dev/null | head -1 )" ;;
   *) echo "Brug: $0 private | on | open --yes | off | status"; exit 1 ;;
 esac

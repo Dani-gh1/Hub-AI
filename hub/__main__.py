@@ -21,6 +21,30 @@ from .server import ROOT, bot_host, load_bots, port_open, scan_age, serve
 BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
 
 
+def env_files() -> list[Path]:
+    home = Path.home()
+    return [Path(os.environ["HUB_ENV_FILE"])] if os.environ.get("HUB_ENV_FILE") else [
+        Path("/etc/hub.env"), home / "Library" / "Application Support" / "Hub AI" / "hub.env"]
+
+
+def load_env_file() -> str | None:
+    """Læser hub.env (KEY=VALUE) ind i miljøet, uden at overskrive noget, der allerede er sat. Returnerer filens sti, hvis den blev læst.
+    Så ser `hub status` og `hub report` det samme som tjenesten (fx HUB_EXTERNAL_NOVA)."""
+    for f in env_files():
+        try:
+            lines = f.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            os.environ.setdefault(k.strip(), v.split(" #")[0].strip())
+        return str(f)
+    return None
+
+
 def bot_dir(bot: dict) -> Path:
     return BOTS_DIR / bot["repo"].split("/")[-1] if bot.get("repo") else BOTS_DIR / bot["key"]
 
@@ -65,10 +89,19 @@ def cmd_fetch(bots) -> None:
 
 
 def cmd_status(bots) -> None:
+    from .server import last_problem
     for b in bots:
         inst = "slået fra" if b.get("disabled") else "ekstern" if b.get("external") else "installeret" if b.get("repo") and bot_dir(b).exists() else "mangler"
-        run = "kører" if port_open(b["port"], bot_host(b)) else "kører ikke"
-        print(f"{b['name']:<12} {inst:<12} {run:<11} port {b['port']}")
+        up = port_open(b["port"], bot_host(b))
+        print(f"{b['name']:<12} {inst:<12} {'kører' if up else 'kører ikke':<11} port {b['port']}")
+        if not up and not b.get("disabled"):
+            why = last_problem(b)
+            if why:
+                print(f"             sidste fejl: {why}")
+            elif inst == "mangler":
+                print("             ikke hentet til denne maskine: python3 -m hub fetch")
+            else:
+                print(f"             ingen fejl i loggen. Se: tail -20 {ROOT / 'logs' / (b['key'] + '.log')}")
 
 
 def cmd_run(bots, host: str, port: int) -> None:
@@ -107,6 +140,8 @@ def main(argv=None) -> int:
     ap.add_argument("--host", default=os.environ.get("HUB_HOST", "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("HUB_PORT", "8080")))
     a = ap.parse_args(argv)
+    if a.cmd in ("status", "doctor", "report", "serve"):
+        load_env_file()
     bots = load_bots()
     if a.cmd in ("run", "doctor", "report"):
         from . import certs

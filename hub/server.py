@@ -165,6 +165,8 @@ def bot_overview(bot: dict) -> dict:
             pass
         if not out["idle"] and (out["scan_age"] is None or out["scan_age"] > STALE_AFTER_S):
             out["issue"] = data.get("problem") or last_problem(bot)
+    elif out["configured"] and not bot.get("external"):      # botten kører ikke: vis den seneste fejl fra loggen
+        out["issue"] = last_problem(bot)
     return out
 
 
