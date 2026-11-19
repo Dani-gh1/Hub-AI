@@ -95,8 +95,10 @@ def cmd_status(bots) -> None:
         up = port_open(b["port"], bot_host(b))
         print(f"{b['name']:<12} {inst:<12} {'kører' if up else 'kører ikke':<11} port {b['port']}")
         if not up and not b.get("disabled"):
-            why = last_problem(b)
-            if why:
+            why = "" if b.get("external") else last_problem(b)
+            if b.get("external"):
+                print(f"             tjenesten svarer ikke på {bot_host(b)}:{b['port']}. Tjek den: sudo systemctl status desk")
+            elif why:
                 print(f"             sidste fejl: {why}")
             elif inst == "mangler":
                 print("             ikke hentet til denne maskine: python3 -m hub fetch")
