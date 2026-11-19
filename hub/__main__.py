@@ -4,6 +4,7 @@ serve  kun hubben (botterne kører allerede på deres egne porte)
 run    starter alle installerede botter og hubben
 fetch  henter manglende botter fra GitHub ind i bots/
 status viser hvad der er installeret og kører
+report  samler alt til fejlfinding i én udskrift (versioner, datakilder, status, logs)
 doctor tester botternes datakilder og forklarer, hvis noget er spærret eller overvåget på dit netværk
 """
 from __future__ import annotations
@@ -51,10 +52,12 @@ def cmd_fetch(bots) -> None:
         elif not b.get("repo"):
             print(f"- {b['name']}: ingen repo sat i bots.json endnu")
         elif bot_dir(b).exists():
-            print(f"✓ {b['name']}: findes allerede")
+            pass                                   # opdateres nedenfor
         else:
             print(f"↓ {b['name']}: henter {b['repo']}")
             subprocess.run(["git", "clone", "-q", f"https://github.com/{b['repo']}.git", str(bot_dir(b))], check=False)
+    from .updater import update_bots
+    update_bots(bots, bot_dir)                     # hentede botter får også den nyeste kode
 
 
 def cmd_status(bots) -> None:
@@ -66,6 +69,9 @@ def cmd_status(bots) -> None:
 
 def cmd_run(bots, host: str, port: int) -> None:
     from .supervisor import Supervisor, Unit
+    if os.environ.get("HUB_NO_UPDATE") != "1":     # start altid på den nyeste kode (slå fra med HUB_NO_UPDATE=1)
+        from .updater import update_bots
+        update_bots(bots, bot_dir, quiet_same=True)
     units = []
     for b in bots:
         d = bot_dir(b)
@@ -93,15 +99,16 @@ def cmd_run(bots, host: str, port: int) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="hub", description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("cmd", choices=["serve", "run", "fetch", "status", "doctor"])
+    ap.add_argument("cmd", choices=["serve", "run", "fetch", "status", "doctor", "report"])
     ap.add_argument("--host", default=os.environ.get("HUB_HOST", "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("HUB_PORT", "8080")))
     a = ap.parse_args(argv)
     bots = load_bots()
-    if a.cmd in ("run", "doctor"):
+    if a.cmd in ("run", "doctor", "report"):
         from . import certs
         certs.setup()                      # Mac: brug Macens rod-certifikater, hvis Python mangler sine (børn arver indstillingen)
-    {"fetch": lambda: cmd_fetch(bots), "status": lambda: cmd_status(bots), "doctor": lambda: sys.exit(1 if __import__("hub.doctor", fromlist=["run"]).run(bots) else 0),
+    {"fetch": lambda: cmd_fetch(bots), "status": lambda: cmd_status(bots), "report": lambda: __import__("hub.report", fromlist=["run"]).run(bots, ROOT, bot_dir, a.port),
+     "doctor": lambda: sys.exit(1 if __import__("hub.doctor", fromlist=["run"]).run(bots) else 0),
      "run": lambda: cmd_run(bots, a.host, a.port), "serve": lambda: serve(a.host, a.port, bots)}[a.cmd]()
     return 0
 
