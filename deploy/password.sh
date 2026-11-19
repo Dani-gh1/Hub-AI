@@ -19,6 +19,7 @@ setvar() {   # setvar NAVN VÆRDI  (erstatter eller tilføjer linjen)
 service_loaded() {
   if [ "$OS" = Darwin ]; then launchctl print "gui/$(id -u)/ai.hub.dashboard" >/dev/null 2>&1; else systemctl is-active --quiet hub 2>/dev/null; fi
 }
+DRY="${HUB_DRY_RUN:-0}"
 RESTARTED=0
 restart() {
   [ "$DRY" = 1 ] && return 0
