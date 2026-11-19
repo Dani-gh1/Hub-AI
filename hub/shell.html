@@ -263,13 +263,6 @@ function go(key, sub) {
 /* ---------- data ---------- */
 let CUT = true;
 try { CUT = localStorage.getItem("hubcut") !== "0"; } catch (e) {}
-function cutBar(cut) {
-  const on = CUT && cut;
-  return h("div", { class: "note cutbar" },
-    on ? `Alle botter vises fra ${when(cut)} (den yngste bots start), så de kan sammenlignes. Afkast, kurver og maks. fald er regnet fra da; antal handler og vundet-procent gælder hele perioden. Intet er slettet. ` : "Alle botters data vises fra start. ",
-    h("button", { class: "pill", type: "button", onclick: () => { CUT = !CUT; try { localStorage.setItem("hubcut", CUT ? "1" : "0"); } catch (e) {} lastJson = ""; load(true); } },
-      CUT ? "Vis alt" : "Fælles startdato"));
-}
 async function api(path0) {
   const path = path0 + (CUT ? "" : (path0.includes("?") ? "&" : "?") + "cut=0");
   const r = await fetch(path, { cache: "no-store" });
@@ -334,7 +327,6 @@ function vOverblik() {
   const wrap = h("div", { class: "chart", id: "chart" });
   const legend = h("div", { class: "legend" });
   view(
-    cutBar(DATA && DATA.cut),
     h("div", { class: "grid kpis" },
       kpi("Bedste strategi", best ? pct(best.return_pct) : "–", best && best.name, best && tone(best.return_pct)),
       kpi("Strategier i plus", `${plus} af ${list.length}`),
@@ -521,7 +513,6 @@ function renderHub(rows) {
   const ranked = rows.filter((b) => b.best).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !b.best);
   const live = rows.filter((b) => b.up).length;
   view(
-    cutBar((rows.find((b) => b.cut) || {}).cut),
     h("div", { class: "grid kpis" },
       kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),
       kpi("Botter der scanner", `${rows.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))).length} af ${rows.filter((b) => b.configured).length}`,
