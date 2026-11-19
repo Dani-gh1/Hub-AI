@@ -96,6 +96,12 @@ Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`,
 python3 -m unittest discover -s tests -t .
 ```
 
+## Mac: "unable to get local issuer certificate"
+
+Python fra python.org leveres uden rod-certifikater, så alle HTTPS-kald fejler, selv om netværket er i orden. Så kan ingen bot hente
+data og dermed heller ikke handle. `python3 -m hub run` (og `hub doctor`) opdager det selv og bygger en certifikatfil ud fra Macens
+egen nøglering, som botterne arver (`SSL_CERT_FILE`). Du kan i stedet køre `Install Certificates.command` i Pythons programmappe.
+
 ## Hvis en bot ikke scanner: `hub doctor`
 
 ```bash

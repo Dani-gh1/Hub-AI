@@ -98,6 +98,9 @@ def main(argv=None) -> int:
     ap.add_argument("--port", type=int, default=int(os.environ.get("HUB_PORT", "8080")))
     a = ap.parse_args(argv)
     bots = load_bots()
+    if a.cmd in ("run", "doctor"):
+        from . import certs
+        certs.setup()                      # Mac: brug Macens rod-certifikater, hvis Python mangler sine (børn arver indstillingen)
     {"fetch": lambda: cmd_fetch(bots), "status": lambda: cmd_status(bots), "doctor": lambda: sys.exit(1 if __import__("hub.doctor", fromlist=["run"]).run(bots) else 0),
      "run": lambda: cmd_run(bots, a.host, a.port), "serve": lambda: serve(a.host, a.port, bots)}[a.cmd]()
     return 0

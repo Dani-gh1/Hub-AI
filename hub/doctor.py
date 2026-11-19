@@ -13,6 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 TIMEOUT = 8
+PUBLIC_CAS = ("digicert", "amazon", "google trust", "let's encrypt", "isrg", "cloudflare", "sectigo", "globalsign", "microsoft",
+              "comodo", "godaddy", "entrust", "starfield", "usertrust", "baltimore", "gts")
 
 
 def status_verdict(code: int) -> tuple[bool, str]:
@@ -58,8 +60,12 @@ def check(host: str, port: int = 443) -> tuple[bool, str]:
     except ssl.SSLCertVerificationError as e:
         who = issuer_of(host, port)
         reason = getattr(e, "verify_message", "") or str(e)
-        return False, (f"certifikatet afvises ({reason}). Udstedt af: {who}. Dit netværk, din router eller et antivirusprogram "
-                       f"overvåger forbindelsen til {host}")
+        if any(ca.lower() in who.lower() for ca in PUBLIC_CAS):
+            return False, (f"certifikatet er udstedt af {who} (en almindelig, troværdig udsteder), men Python kender ikke udstederen "
+                           f"({reason}). Pythons rod-certifikater mangler, typisk for Python fra python.org på en Mac. "
+                           "Det er ikke dit netværk. `python3 -m hub run` retter det selv; ellers kør Install Certificates.command")
+        return False, (f"certifikatet afvises ({reason}). Udstedt af: {who}, som ikke er en kendt udsteder. Dit netværk, din router "
+                       f"eller et antivirusprogram overvåger sandsynligvis forbindelsen til {host}")
     except (socket.timeout, TimeoutError):
         return False, "ingen svar inden for 8 sekunder (blokeret af firewall eller meget langsom forbindelse)"
     except OSError as e:
