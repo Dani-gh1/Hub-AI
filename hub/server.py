@@ -84,12 +84,24 @@ def upstream(bot: dict, sub: str, query: str = "", timeout: float = 15):
 _cache: dict[str, tuple[float, dict]] = {}
 
 
+def data_since(data: dict) -> float | None:
+    """Det tidligste tidspunkt i botens egne data (kurvepunkter og handler), dvs. hvornår den begyndte at samle data."""
+    times = []
+    for st in data.get("strategies") or []:
+        times += [p[0] for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and p and isinstance(p[0], (int, float))]
+    tr = data.get("trades") or {}
+    times += [t.get("ts") for t in (tr.get("open") or []) + (tr.get("closed") or []) if isinstance(t.get("ts"), (int, float))]
+    times = [t for t in times if 1.0e9 < t < time.time() + 86400]
+    return min(times) if times else None
+
+
 def bot_data(bot: dict) -> dict:
     """Fælles format for én bot (cachet i 5 sekunder, så flere faner ikke belaster botten)."""
     hit = _cache.get(bot["key"])
     if hit and time.time() - hit[0] < 5:
         return hit[1]
     data = normalize(bot, lambda sub: upstream(bot, sub, timeout=10))
+    data["since"] = data_since(data)
     _cache[bot["key"]] = (time.time(), data)
     return data
 
@@ -192,6 +204,8 @@ def bot_overview(bot: dict) -> dict:
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
             out["idle"] = data.get("idle") or ""
+            if data.get("since"):
+                out["since"] = min(data["since"], out["since"] or data["since"])
         except (OSError, ValueError, KeyError, TypeError):
             pass
         if not out["idle"] and (out["scan_age"] is None or out["scan_age"] > STALE_AFTER_S):

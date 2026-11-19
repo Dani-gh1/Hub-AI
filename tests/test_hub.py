@@ -200,3 +200,11 @@ class HubTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_data_since_finds_earliest_point():
+    from hub.server import data_since
+    d = {"strategies": [{"curve": [[2_000_000_000 - 9e8, 0], [2_000_000_000 - 5e8, 1]]}, {"curve": []}],
+         "trades": {"open": [{"ts": 1_200_000_000.0}], "closed": [{"ts": None}]}}
+    assert data_since(d) == 1_100_000_000
+    assert data_since({"strategies": [], "trades": {"open": [], "closed": []}}) is None
