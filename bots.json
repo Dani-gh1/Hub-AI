@@ -5,28 +5,6 @@
    "name": "Atlas AI",
    "repo": "Dani-gh1/Atlas",
    "port": 8801,
-   "tabs": [
-    [
-     "oversigt",
-     "Oversigt",
-     "[data-tab=oversigt]"
-    ],
-    [
-     "strategier",
-     "Strategier",
-     "[data-tab=strategier]"
-    ],
-    [
-     "handler",
-     "Handler",
-     "[data-tab=handler]"
-    ],
-    [
-     "regler",
-     "Regler",
-     "[data-tab=regler]"
-    ]
-   ],
    "desc": "Papirdesk",
    "launch": {
     "kind": "patch",
@@ -42,43 +20,13 @@
    "hide": "nav[role=tablist]",
    "short": "forex",
    "invests": "Forex og råvarer (EUR/USD, guld, olie)",
-   "best": {
-    "path": "/api/strategies",
-    "list": "strategies",
-    "name": [
-     "title"
-    ],
-    "ret": "return_pct",
-    "trades": "trades"
-   }
+   "adapter": "forex"
   },
   {
    "key": "meridian",
    "name": "Meridian AI",
    "repo": "Dani-gh1/Meridian-AI",
    "port": 8802,
-   "tabs": [
-    [
-     "oversigt",
-     "Oversigt",
-     "[data-tab=oversigt]"
-    ],
-    [
-     "strategier",
-     "Strategier",
-     "[data-tab=strategier]"
-    ],
-    [
-     "handler",
-     "Handler",
-     "[data-tab=handler]"
-    ],
-    [
-     "regler",
-     "Regler",
-     "[data-tab=regler]"
-    ]
-   ],
    "desc": "Papirdesk",
    "launch": {
     "kind": "patch",
@@ -94,43 +42,13 @@
    "hide": "nav[role=tablist]",
    "short": "forex",
    "invests": "Forex og råvarer (EUR/USD, guld, olie)",
-   "best": {
-    "path": "/api/strategies",
-    "list": "strategies",
-    "name": [
-     "title"
-    ],
-    "ret": "return_pct",
-    "trades": "trades"
-   }
+   "adapter": "forex"
   },
   {
    "key": "comet",
    "name": "Comet AI",
    "repo": "Dani-gh1/Comet-AI",
    "port": 8803,
-   "tabs": [
-    [
-     "oversigt",
-     "Oversigt",
-     "[data-t=oversigt]"
-    ],
-    [
-     "strategier",
-     "Strategier",
-     "[data-t=strategier]"
-    ],
-    [
-     "handler",
-     "Handler",
-     "[data-t=handler]"
-    ],
-    [
-     "regler",
-     "Regler",
-     "[data-t=regler]"
-    ]
-   ],
    "desc": "Nye tokens på Base, Ethereum og BNB Chain",
    "launch": {
     "kind": "patch",
@@ -142,16 +60,7 @@
    "hide": "header nav",
    "short": "nye tokens",
    "invests": "Nye tokens på Base, Ethereum og BNB Chain",
-   "best": {
-    "path": "/api/strategies",
-    "list": "cards",
-    "name": [
-     "name",
-     "chain_name"
-    ],
-    "ret": "return_pct",
-    "trades": "trades"
-   }
+   "adapter": "comet"
   },
   {
    "key": "delphi",
@@ -172,39 +81,9 @@
     ]
    },
    "hide": "nav[role=tablist]",
-   "tabs": [
-    [
-     "oversigt",
-     "Oversigt",
-     "[data-tab=oversigt]"
-    ],
-    [
-     "strategier",
-     "Strategier",
-     "[data-tab=strategier]"
-    ],
-    [
-     "handler",
-     "Handler",
-     "[data-tab=handler]"
-    ],
-    [
-     "regler",
-     "Regler",
-     "[data-tab=regler]"
-    ]
-   ],
    "short": "prognosemarkeder",
    "invests": "Prognosemarkeder (Polymarket og Kalshi)",
-   "best": {
-    "path": "/api/strategies",
-    "list": "strategies",
-    "name": [
-     "name"
-    ],
-    "ret": "return_pct",
-    "trades": "closed"
-   }
+   "adapter": "delphi"
   },
   {
    "key": "quasar",
@@ -220,39 +99,9 @@
     ]
    },
    "hide": "header nav, body > nav, nav",
-   "tabs": [
-    [
-     "oversigt",
-     "Oversigt",
-     "[data-tab=oversigt]"
-    ],
-    [
-     "strategier",
-     "Strategier",
-     "[data-tab=strategier]"
-    ],
-    [
-     "handler",
-     "Handler",
-     "[data-tab=handler]"
-    ],
-    [
-     "regler",
-     "Regler",
-     "[data-tab=regler]"
-    ]
-   ],
    "short": "krypto-futures",
    "invests": "Krypto-futures med gearing (Binance/Bybit)",
-   "best": {
-    "path": "/api/overview",
-    "list": "strategies",
-    "name": [
-     "label"
-    ],
-    "ret": "return_pct",
-    "trades": "trades"
-   }
+   "adapter": "quasar"
   },
   {
    "key": "orion",
@@ -268,39 +117,9 @@
     ]
    },
    "hide": "#tabs",
-   "tabs": [
-    [
-     "oversigt",
-     "Oversigt",
-     "[data-t=oversigt]"
-    ],
-    [
-     "strategier",
-     "Strategier",
-     "[data-t=strategier]"
-    ],
-    [
-     "handler",
-     "Handler",
-     "[data-t=handler]"
-    ],
-    [
-     "regler",
-     "Regler",
-     "[data-t=regler]"
-    ]
-   ],
    "short": "krypto",
    "invests": "Store kryptovalutaer (BTC, ETH, SOL m.fl.)",
-   "best": {
-    "path": "/api/strategies",
-    "list": "",
-    "name": [
-     "label"
-    ],
-    "ret": "return_pct",
-    "trades": "trades"
-   }
+   "adapter": "orion"
   },
   {
    "key": "nova",
@@ -317,39 +136,9 @@
     ]
    },
    "hide": "#tabs",
-   "tabs": [
-    [
-     "overblik",
-     "Overblik",
-     "#tab-overblik"
-    ],
-    [
-     "handler",
-     "Handler",
-     "#tab-handler"
-    ],
-    [
-     "marked",
-     "Marked",
-     "#tab-marked"
-    ],
-    [
-     "desk",
-     "Desk",
-     "#tab-desk"
-    ]
-   ],
    "short": "memecoins",
    "invests": "Nye Solana-memecoins",
-   "best": {
-    "path": "/api/state",
-    "list": "strategies.books",
-    "name": [
-     "name"
-    ],
-    "ret": "return_pct",
-    "trades": "closed"
-   }
+   "adapter": "nova"
   }
  ]
 }

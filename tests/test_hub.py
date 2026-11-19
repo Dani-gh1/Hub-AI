@@ -4,7 +4,8 @@ import unittest
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from hub.server import extract_best, inject, load_bots, make_handler
+from hub.adapters import ADAPTERS, fmt, group_settings, points, ts
+from hub.server import best_of, inject, load_bots, make_handler
 
 
 class Fake(BaseHTTPRequestHandler):
@@ -33,21 +34,32 @@ class HubTests(unittest.TestCase):
         self.assertEqual(len({b["port"] for b in bots}), 7)
         for b in bots:
             if b.get("repo"):
-                self.assertTrue(b["tabs"] and b["launch"])
+                self.assertTrue(b["launch"])
+            self.assertIn(b["adapter"], ADAPTERS)
 
-    def test_every_bot_has_label_and_best_rule(self):
+    def test_every_bot_has_label(self):
         for b in load_bots():
             self.assertTrue(b["short"] and b["invests"], b["key"])
-            self.assertTrue(b["best"]["path"] and b["best"]["ret"], b["key"])
 
-    def test_extract_best(self):
-        cfg = {"list": "a.rows", "name": ["n", "c"], "ret": "r", "trades": "t"}
-        data = {"a": {"rows": [{"n": "X", "c": "Base", "r": -1.5, "t": 4}, {"n": "Y", "c": "", "r": 2.345, "t": 30},
-                               {"n": "Z", "r": None, "t": 1}]}}
-        self.assertEqual(extract_best(data, cfg), {"name": "Y", "return_pct": 2.35, "trades": 30, "count": 2, "positive": 1})
-        self.assertEqual(extract_best([{"n": "A", "r": 0.5}], {"list": "", "name": ["n"], "ret": "r"})["name"], "A")
-        self.assertIsNone(extract_best({"a": {}}, cfg))
-        self.assertIsNone(extract_best({"a": {"rows": [{"n": "X", "r": "x"}]}}, cfg))
+    def test_best_of(self):
+        rows = [{"name": "X", "return_pct": -1.5, "trades": 4}, {"name": "Y", "return_pct": 2.345, "trades": 30},
+                {"name": "Z", "return_pct": None}]
+        self.assertEqual(best_of(rows), {"name": "Y", "return_pct": 2.35, "trades": 30, "count": 2, "positive": 1})
+        self.assertIsNone(best_of([]))
+        self.assertIsNone(best_of([{"name": "Z", "return_pct": None}]))
+
+    def test_adapter_helpers(self):
+        self.assertEqual(ts(1795046573949), 1795046573.949)      # millisekunder
+        self.assertEqual(ts(1795046573), 1795046573.0)
+        self.assertEqual(ts("2026-11-19T00:00:00Z"), 1795046400.0)
+        self.assertIsNone(ts(None))
+        self.assertEqual(points([[1795000000, 1.23456], [1795000060, 2.0]]), [[1795000000.0, 1.235], [1795000060.0, 2.0]])
+        self.assertEqual(points([0.5, 1.5]), [[0.0, 0.5], [1.0, 1.5]])   # uden tid bruges positionen
+        self.assertEqual(fmt(True), "ja")
+        self.assertEqual(fmt(0.50), "0,5")
+        names = [g["title"] for g in group_settings({"SCOUT_X": 1, "FILTER_Y": 2, "DASHBOARD_PASSWORD": "hemmelig", "TICK": 3})]
+        self.assertEqual(names, ["Scout", "Filter", "Drift"])
+        self.assertNotIn("hemmelig", str(group_settings({"DASHBOARD_PASSWORD": "hemmelig", "NTFY_TOPIC": "x"})))
 
     def test_inject_prefixes_paths_and_hides_nav(self):
         out = inject(b"<head></head><img src='/x.png'><a href='/b/k/y'>", "k", "nav").decode()
@@ -58,8 +70,8 @@ class HubTests(unittest.TestCase):
 
     def test_proxy_and_status(self):
         up = start(Fake)
-        bots = [{"key": "a", "name": "A", "repo": "x/y", "port": up.server_port, "tabs": [["t", "T", "#t"]], "hide": "nav"},
-                {"key": "b", "name": "B", "repo": None, "port": 1, "tabs": []}]
+        bots = [{"key": "a", "name": "A", "repo": "x/y", "port": up.server_port, "adapter": "nova", "hide": "nav"},
+                {"key": "b", "name": "B", "repo": None, "port": 1, "adapter": "nova"}]
         hub = start(make_handler(bots))
         base = f"http://127.0.0.1:{hub.server_port}"
         data = json.load(urllib.request.urlopen(base + "/api/bots"))
@@ -67,7 +79,7 @@ class HubTests(unittest.TestCase):
         self.assertFalse(data[1]["configured"])
         ov = json.load(urllib.request.urlopen(base + "/api/overview"))
         self.assertEqual([o["key"] for o in ov], ["a", "b"])
-        self.assertTrue(ov[0]["up"] and ov[0]["best"] is None)  # ingen best-regel i fake-botten
+        self.assertTrue(ov[0]["up"] and ov[0]["best"] is None)  # fake-botten har ingen strategidata
         page = urllib.request.urlopen(base + "/b/a/").read().decode()
         self.assertIn("window.fetch", page)
         self.assertIn("/b/a/static/a.png", page)

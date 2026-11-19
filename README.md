@@ -3,15 +3,22 @@
 Én app med syv faner – én pr. papirhandels-bot – og underfaner under hver bot.
 Kun papirhandel med fiktive penge.
 
-| Fane | Repo | Underfaner |
-|---|---|---|
-| Atlas AI | Dani-gh1/Atlas | Oversigt, Strategier, Handler, Regler |
-| Meridian AI | Dani-gh1/Meridian-AI | Oversigt, Strategier, Handler, Regler |
-| Comet AI | Dani-gh1/Comet-AI | Oversigt, Strategier, Handler, Regler |
-| Delphi AI | Dani-gh1/Delphi-AI | Oversigt, Strategier, Handler, Regler |
-| Quasar AI | Dani-gh1/Quasar-AI | Oversigt, Strategier, Handler, Regler |
-| Orion AI | Dani-gh1/Orion-AI | Oversigt, Strategier, Handler, Regler |
-| Nova AI | Dani-gh1/Coins | Overblik, Handler, Marked, Desk |
+| Fane | Repo |
+|---|---|
+| Atlas AI (forex) | Dani-gh1/Atlas |
+| Meridian AI (forex) | Dani-gh1/Meridian-AI |
+| Comet AI (nye tokens) | Dani-gh1/Comet-AI |
+| Delphi AI (prognosemarkeder) | Dani-gh1/Delphi-AI |
+| Quasar AI (krypto-futures) | Dani-gh1/Quasar-AI |
+| Orion AI (krypto) | Dani-gh1/Orion-AI |
+| Nova AI (memecoins) | Dani-gh1/Coins |
+
+Hver bot har de samme fire sider, så alt ser ens ud:
+
+* **Overblik**: nøgletal, en glat graf over alle strategiers afkast og én tabel med alle strategier.
+* **Strategier**: et kort pr. strategi med tal og strategiens egne regler (søg og sortér).
+* **Desk**: botten som system: status, tragt, hvorfor ting bliver dræbt, og agenternes regler og indstillinger.
+* **Handler**: åbne og lukkede handler, filtrérbare pr. strategi.
 
 ## Kom i gang
 
@@ -26,23 +33,22 @@ python3 -m hub run
 Åbn <http://127.0.0.1:8080>. `fetch` henter botterne ind i `bots/`, `run` starter dem (hver på sin egen port, kun lokalt)
 og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ standardbibliotek.
 
-## Overblik
+## Alle botter
 
-Første fane er **Overblik**: en tabel over, om alle botter kører, og en tabel med hver bots bedste strategi og dens
-afkast i procent (sorteret, med antal lukkede handler). Fanenavnene viser, hvad hver bot investerer i, fx
-*Nova AI (memecoins)*. Hvordan den bedste strategi findes, står pr. bot under `best` i `bots.json`.
+Første fane er **Overblik** for alle botter: en tabel over, om de kører, og en tabel med hver bots bedste strategi.
 
 ## Sådan virker det
 
-* Hver bot beholder sit eget dashboard. Hubben sender `/b/<bot>/…` videre til det (kun GET) og skjuler botens egen
-  fanelinje. Hubbens underfaner klikker på botens faner indenfor iframen.
+* Hubben henter hver bots data fra dens eget dashboard og omsætter den til ét fælles format (`hub/adapters.py`),
+  så alle botter vises med samme design (`hub/shell.html`). Botternes egne dashboards er stadig tilgængelige under
+  `/b/<bot>/` (link på Desk-siden).
 * Adresser kan deles: `#quasar/regler`.
 * Hubben åbner kun på 127.0.0.1. Skal den åbnes på netværket: sæt `HUB_PASSWORD` og start med `--host 0.0.0.0`.
   Har et dashboard sit eget login (fx Delphi), sæt `HUB_UPSTREAM_AUTH_DELPHI=bruger:kode`.
 
 ## Tilføj en ny bot
 
-Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `hide` og `tabs` (kopiér fra en eksisterende bot med samme opbygning), og kør `python3 -m hub fetch`.
+Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`, og skriv en adapter i `hub/adapters.py`, hvis botten har en anden datastruktur end de eksisterende (`forex`, `delphi`, `quasar`, `orion`, `comet`, `nova`). Kør derefter `python3 -m hub fetch`.
 
 ## Test
 

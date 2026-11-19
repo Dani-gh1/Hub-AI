@@ -5,199 +5,479 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Papirdesk Hub</title>
 <style>
-:root{--bg:#f5f6f8;--card:#fff;--ink:#14171c;--mute:#667085;--line:#dfe3ea;--acc:#2f6fed;--ok:#1a9d5b;--off:#b42318;--warn:#b7791f}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1218;--card:#171b23;--ink:#e8ebf1;--mute:#8d96a7;--line:#2a303c;--acc:#6b9bff;--ok:#3ccf86;--off:#ff7b6e;--warn:#e5b45a}}
+:root{
+  --bg:#f6f7fb;--surface:#fff;--ink:#0f172a;--ink2:#475569;--mute:#94a3b8;--line:#e8ebf2;--soft:#f1f4f9;
+  --acc:#5b5bf0;--pos:#0f9d6a;--neg:#e5484d;--warn:#b7791f;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px -12px rgba(15,23,42,.10);
+  --r:16px;--grey:#c3cad8;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0b0e14;--surface:#141821;--ink:#eef1f7;--ink2:#a7b0c0;--mute:#667085;--line:#222836;--soft:#1a1f2b;
+  --acc:#8b8bff;--pos:#3ddc97;--neg:#ff6b70;--warn:#e5b45a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 28px -14px rgba(0,0,0,.6);--grey:#3a4254}}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column}
-header{background:var(--card);border-bottom:1px solid var(--line)}
-.top{display:flex;align-items:center;gap:10px;padding:10px 16px 0}
-.top h1{font-size:16px;margin:0}
-.badge{font-size:11px;font-weight:600;color:var(--warn);border:1px solid var(--warn);border-radius:99px;padding:1px 8px;white-space:nowrap}
-.bar{display:flex;gap:2px;overflow-x:auto;padding:6px 12px 0;scrollbar-width:none}
-.bar::-webkit-scrollbar{display:none}
-.bar button{font:inherit;color:var(--mute);background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:7px}
-.bar button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
-.bar button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px;border-radius:6px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--mute)}
-.dot.up{background:var(--ok)}.dot.down{background:var(--off)}
-#sub{background:var(--bg);border-bottom:1px solid var(--line);padding:6px 12px;gap:6px}
-#sub button{border:1px solid var(--line);border-radius:99px;padding:4px 14px;background:var(--card)}
-#sub button[aria-selected=true]{background:var(--acc);border-color:var(--acc);color:#fff}
-main{flex:1;min-height:0;position:relative}
-iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
-#overview{position:absolute;inset:0;overflow:auto;padding:16px}
-.wrap{max-width:980px;margin:0 auto}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
-.card h2{font-size:15px;margin:0 0 4px}.card p.sub{margin:0 0 10px;color:var(--mute);font-size:13px}
-.tw{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th{font-weight:600;color:var(--mute);font-size:12px;text-align:left;border-bottom:1px solid var(--line);padding:6px 10px;white-space:nowrap}
-td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-tr:last-child td{border-bottom:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;min-height:100vh}
+button,select,input{font:inherit;color:inherit}
+a{color:inherit}
+.num{font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.mute{color:var(--mute)}
+
+/* ---------- top ---------- */
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);
+  -webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid var(--line)}
+.bar{max-width:1120px;margin:0 auto;padding:0 20px}
+.brand{display:flex;align-items:center;gap:12px;padding:14px 0 10px}
+.logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--acc),#a78bfa);box-shadow:0 4px 12px -4px var(--acc)}
+.brand b{font-size:16px;letter-spacing:-.01em}
+.badge{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent);border-radius:99px;padding:3px 10px;white-space:nowrap}
+.scroller{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:12px}
+.scroller::-webkit-scrollbar{display:none}
+.pill{flex:1 1 auto;border:0;background:transparent;color:var(--ink2);padding:7px 12px;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.25;
+  white-space:nowrap;transition:background .18s,color .18s,box-shadow .18s}
+.pill:hover{background:var(--soft)}
+.pill[aria-selected=true]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:var(--shadow),0 0 0 1px var(--line)}
+.pill .t{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.pill small{color:var(--mute);font-weight:400;font-size:11.5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--mute);flex:none}
+.dot.up{background:var(--pos);box-shadow:0 0 0 3px color-mix(in srgb,var(--pos) 18%,transparent)}.dot.down{background:var(--neg)}
+.subbar{border-top:1px solid var(--line)}
+.subs{display:flex;gap:4px}
+.sub{border:0;background:none;padding:11px 14px;color:var(--ink2);cursor:pointer;position:relative;transition:color .18s}
+.sub:hover{color:var(--ink)}
+.sub[aria-selected=true]{color:var(--ink);font-weight:600}
+.sub[aria-selected=true]::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;border-radius:2px;background:var(--acc)}
+.pill:focus-visible,.sub:focus-visible,select:focus-visible,input:focus-visible,.seg button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ---------- indhold ---------- */
+main{max-width:1120px;margin:0 auto;padding:22px 20px 60px}
+.view{animation:in .28s ease both}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view{animation:none}*{transition:none!important}}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+.grid>.card{margin-bottom:0}
+.kpi .l{font-size:12.5px;color:var(--ink2)}
+.kpi .v{font-size:24px;font-weight:650;letter-spacing:-.02em;margin-top:4px;line-height:1.2}
+.kpi .s{font-size:12.5px;color:var(--mute);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+h2{font-size:15px;margin:0;letter-spacing:-.01em}
+.head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.head p{margin:0;color:var(--mute);font-size:13px}
+.note{font-size:12.5px;color:var(--mute);margin:4px 0 0}
+
+/* tabeller */
+.tw{overflow-x:auto;margin:0 -8px}
+table{border-collapse:collapse;width:100%}
+th{font-size:12px;font-weight:600;color:var(--mute);text-align:left;padding:8px 12px;white-space:nowrap;letter-spacing:.01em}
+td{padding:11px 12px;border-top:1px solid var(--line);white-space:nowrap}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
-td a{color:var(--ink);font-weight:600;text-decoration:none}td a:hover{text-decoration:underline}
-.pos{color:var(--ok)}.neg{color:var(--off)}.mute{color:var(--mute)}
-.tag{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:1px 7px;color:var(--mute);margin-left:6px}
-.st{display:inline-flex;align-items:center;gap:7px}
-.mo{display:none}
-.under{display:block;font-weight:400;font-size:12px;color:var(--mute);margin-top:1px;white-space:normal}
-@media (max-width:640px){.dm{display:none}.mo{display:block}#overview{padding:12px}.card{padding:12px}
- td,th{padding:8px 6px;white-space:normal}.tag{display:none}td.n{white-space:nowrap}.st{align-items:flex-start}.st .dot{margin-top:6px;flex:none}}
-.note{font-size:12.5px;color:var(--mute);margin:0}
-.msg{max-width:520px;margin:12vh auto;padding:0 16px;text-align:center}
-.msg h2{margin:0 0 8px}.msg p{color:var(--mute);margin:6px 0}
-code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:var(--soft)}
+td.name{white-space:normal;min-width:150px}
+td.name .sw{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:9px}
+td a{font-weight:600;text-decoration:none}td a:hover{color:var(--acc)}
+.tag{font-size:11px;color:var(--ink2);background:var(--soft);border-radius:99px;padding:2px 8px;margin-left:8px}
+.st{display:inline-flex;align-items:center;gap:8px}
+.empty{padding:36px 12px;text-align:center;color:var(--mute)}
+.under{display:none;font-size:12.5px;color:var(--mute);font-weight:400}
+
+/* graf */
+.chart{position:relative;width:100%;height:340px;touch-action:pan-y}
+.chart svg{display:block;width:100%;height:100%;overflow:visible}
+.chart .ln{fill:none;stroke-linejoin:round;stroke-linecap:round;transition:opacity .2s,stroke-width .2s}
+.chart .ln.dim{opacity:.18}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
+  padding:9px 12px;font-size:12.5px;min-width:150px;opacity:0;transition:opacity .12s;z-index:3}
+.tip .t{color:var(--mute);margin-bottom:5px}
+.tip .r{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-top:3px}
+.tip .r span{display:flex;align-items:center;gap:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:10px;height:3px;border-radius:2px;display:inline-block}
+
+/* strategikort */
+.tools{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.tools input,.tools select{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 14px;min-width:0}
+.tools input{flex:1;min-width:180px}
+.strat{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.sc{margin:0!important;display:flex;flex-direction:column;gap:14px}
+.sc .top{display:flex;align-items:flex-start;gap:12px}
+.sc h3{margin:0;font-size:16px;letter-spacing:-.01em}
+.sc .grp{font-size:11.5px;color:var(--ink2);background:var(--soft);border-radius:99px;padding:2px 9px;display:inline-block;margin-top:5px}
+.sc .big{margin-left:auto;font-size:22px;font-weight:650;letter-spacing:-.02em}
+.sc .desc{margin:0;color:var(--ink2);font-size:13.5px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:var(--soft);border-radius:12px;padding:10px 12px}
+.stats div{min-width:0}.stats b{display:block;font-size:14px;font-variant-numeric:tabular-nums}.stats span{font-size:11.5px;color:var(--mute)}
+.rules h4{margin:0 0 6px;font-size:12px;color:var(--mute);font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.kvs{display:block}
+.kv{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
+.kv:first-child{border-top:0}
+.kv span{color:var(--ink2);min-width:0}.kv b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;min-width:0}
+
+/* desk */
+.sections{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:16px}
+.sections .card{margin:0}
+.sections h2{margin-bottom:10px}
+
+/* handler */
+.seg{display:inline-flex;background:var(--soft);border-radius:12px;padding:3px}
+.seg button{border:0;background:none;padding:7px 16px;border-radius:9px;cursor:pointer;color:var(--ink2);transition:background .15s,color .15s}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.1)}
+.more{display:block;margin:14px auto 0;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 18px;cursor:pointer}
+.more:hover{background:var(--soft)}
+.msg{max-width:480px;margin:12vh auto;text-align:center;color:var(--ink2)}
+.msg h2{font-size:20px;margin-bottom:6px;color:var(--ink)}
+code{background:var(--soft);border-radius:6px;padding:1px 6px;font-size:13px}
+a.ext{font-size:13px;color:var(--ink2);text-decoration:none;border:1px solid var(--line);border-radius:99px;padding:5px 12px;background:var(--surface)}
+a.ext:hover{color:var(--ink);background:var(--soft)}
+
+@media (max-width:720px){
+  main{padding:16px 14px 48px}.bar{padding:0 14px}.card{padding:16px}
+  .badge{display:none}
+  .pill{flex:none}
+  .chart{height:260px}
+  .hide-m{display:none}.under{display:block}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .strat,.sections{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr);gap:10px}.kpi.card{padding:14px}.kpi .v{font-size:19px}.kpi .l{font-size:12px}
+  td,th{padding:10px 8px}
+  td.name{min-width:120px}
+}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <header>
-  <div class="top"><h1>Papirdesk Hub</h1><span class="badge">KUN PAPIRHANDEL · fiktive penge</span></div>
-  <nav class="bar" id="tabs" role="tablist" aria-label="Botter"></nav>
+  <div class="bar">
+    <div class="brand"><div class="logo" aria-hidden="true"></div><b>Papirdesk</b><span class="badge">Kun papirhandel · fiktive penge</span></div>
+    <nav class="scroller" id="tabs" role="tablist" aria-label="Botter"></nav>
+  </div>
+  <div class="subbar" id="subbar" hidden>
+    <div class="bar"><nav class="subs scroller" id="subs" role="tablist" aria-label="Sider" style="padding-bottom:0"></nav></div>
+  </div>
 </header>
-<nav class="bar" id="sub" role="tablist" aria-label="Underfaner" hidden></nav>
-<main>
-  <iframe id="frame" title="Dashboard" hidden></iframe>
-  <div class="msg" id="msg" hidden></div>
-  <section id="overview" hidden aria-label="Overblik">
-    <div class="wrap">
-      <div class="card"><h2>Kører de?</h2><p class="sub">Status for alle syv botter lige nu.</p>
-        <div class="tw"><table><thead><tr><th>Bot</th><th class="dm">Investerer i</th><th>Status</th><th class="n"><span class="dm">Strategier i plus</span><span class="mo">I plus</span></th></tr></thead>
-        <tbody id="ovStatus"></tbody></table></div></div>
-      <div class="card"><h2>Bedste strategi pr. bot</h2><p class="sub">Afkast i procent af papirkontoen siden den nuværende epoke startede. Sorteret efter afkast.</p>
-        <div class="tw"><table><thead><tr><th class="dm">#</th><th>Bot</th><th>Bedste strategi</th><th class="n">Afkast</th><th class="n"><span class="dm">Lukkede handler</span><span class="mo">Handler</span></th></tr></thead>
-        <tbody id="ovBest"></tbody></table></div></div>
-      <p class="note">Kun papirhandel med fiktive penge. Med få lukkede handler er tallene mest held eller uheld og siger lidt om, hvad en strategi kan på sigt. Afkast er før skat og uden garanti for, at det holder med rigtige penge.</p>
-    </div>
-  </section>
-</main>
+<main id="main"></main>
+
 <script>
 "use strict";
-const $ = (id) => document.getElementById(id);
+const SUBS = [["overblik", "Overblik"], ["strategier", "Strategier"], ["desk", "Desk"], ["handler", "Handler"]];
 const OV = "overblik";
-let BOTS = [], cur = null, curKey = OV, curSub = null;
+const PALETTE = ["#5b5bf0", "#f59e0b", "#10b981", "#ec4899", "#0ea5e9", "#8b5cf6", "#ef4444", "#14b8a6"];
+const $ = (id) => document.getElementById(id);
+let BOTS = [], curKey = OV, curSub = "", DATA = null, lastJson = "", seq = 0, extra = {}, chartState = null;
 
-function el(tag, attrs, ...kids) {
+/* ---------- små hjælpere ---------- */
+function h(tag, attrs, ...kids) {
   const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
-  e.append(...kids);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v; else if (k.startsWith("on")) e[k] = v; else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c)));
   return e;
 }
-function route() { const [b, s] = location.hash.slice(1).split("/"); return [b, s]; }
-function setRoute(b, s) { history.replaceState(null, "", "#" + b + (s ? "/" + s : "")); }
+function sv(tag, attrs, ...kids) {
+  const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  e.append(...kids); return e;
+}
+const nf = (v, d = 2) => v.toLocaleString("da-DK", { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (v) => v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v)) + " %";
+const tone = (v) => v > 0 ? "pos" : v < 0 ? "neg" : "mute";
+const when = (t) => t ? new Date(t * 1000).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "–";
+const bot = () => BOTS.find((b) => b.key === curKey);
 
+/* ---------- topnavigation ---------- */
 function drawTabs() {
-  const mk = (key, label, state) => {
-    const btn = el("button", { role: "tab", "aria-selected": String(key === curKey), type: "button" },
-      ...(state === null ? [] : [el("span", { class: "dot " + state })]), label);
-    btn.onclick = () => selectBot(key);
-    return btn;
-  };
-  $("tabs").replaceChildren(mk(OV, "Overblik", null), ...BOTS.map((b) =>
-    mk(b.key, b.short ? `${b.name} (${b.short})` : b.name, !b.configured ? "" : b.up ? "up" : "down")));
+  const mk = (key, text, state, small) => h("button", { class: "pill", role: "tab", "aria-selected": String(key === curKey), type: "button", onclick: () => go(key) },
+    state != null && h("span", { class: "dot " + state }), h("span", { class: "t" }, text, small && h("small", {}, `(${small})`)));
+  $("tabs").replaceChildren(mk(OV, "Overblik", null),
+    ...BOTS.map((b) => mk(b.key, b.name, !b.configured ? "" : b.up ? "up" : "down", b.short)));
+  $("subbar").hidden = curKey === OV;
+  $("subs").replaceChildren(...SUBS.map(([id, text]) => h("button", { class: "sub", role: "tab", type: "button",
+    "aria-selected": String(id === curSub), onclick: () => go(curKey, id) }, text)));
 }
-function drawSub() {
-  const row = $("sub");
-  const tabs = cur && cur.configured && cur.up ? cur.tabs : [];
-  row.hidden = tabs.length === 0;
-  row.replaceChildren(...tabs.map(([id, label]) => {
-    const btn = el("button", { role: "tab", type: "button", "aria-selected": String(id === curSub) }, label);
-    btn.onclick = () => selectSub(id);
-    return btn;
-  }));
+function go(key, sub) {
+  curKey = key; curSub = key === OV ? "" : (SUBS.some((s) => s[0] === sub) ? sub : "overblik");
+  history.replaceState(null, "", "#" + key + (curSub ? "/" + curSub : ""));
+  DATA = null; lastJson = ""; extra = {}; chartState = null;
+  drawTabs(); render(); window.scrollTo({ top: 0 });
 }
-function message(html) {
-  $("overview").hidden = true; $("frame").hidden = true; $("msg").hidden = false; $("msg").innerHTML = html;
-}
-const pct = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %";
-const tone = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "mute");
-const link = (b) => el("a", { href: "#" + b.key }, b.name);
 
-async function loadOverview() {
-  let rows;
+/* ---------- data ---------- */
+async function api(path) {
+  const r = await fetch(path, { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+async function refreshBots() {
+  try { BOTS = await api("/api/bots"); } catch (e) { return; }
+  drawTabs();
+}
+async function load(force) {
+  const my = ++seq;
+  if (curKey === OV) {
+    try { const rows = await api("/api/overview"); if (my === seq && curKey === OV) renderHub(rows); } catch (e) {}
+    return;
+  }
+  const b = bot();
+  if (!b || !b.configured || !b.up) return;
   try {
-    const r = await fetch("/api/overview", { cache: "no-store" });
-    if (!r.ok) throw 0;
-    rows = await r.json();
-  } catch (e) { return; }
-  if (curKey !== OV) return;
-  $("ovStatus").replaceChildren(...rows.map((b) => {
-    const text = !b.configured ? "Ikke koblet på" : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kører (kun dashboard)" : "Kører";
-    const dot = !b.configured ? "" : b.up ? "up" : "down";
-    const plus = b.best ? `${b.best.positive} af ${b.best.count}` : "–";
-    return el("tr", {}, el("td", { class: "wrap-m" }, link(b), el("span", { class: "under mo" }, b.invests || "")), el("td", { class: "dm" }, b.invests || "–"),
-      el("td", {}, el("span", { class: "st" }, el("span", { class: "dot " + dot }), text)), el("td", { class: "n" }, plus));
-  }));
-  const ranked = rows.filter((b) => b.best).sort((x, y) => y.best.return_pct - x.best.return_pct);
-  const none = rows.filter((b) => !b.best);
-  $("ovBest").replaceChildren(...ranked.map((b, i) => el("tr", {},
-    el("td", { class: "mute dm" }, String(i + 1)), el("td", {}, link(b)), el("td", {}, b.best.name),
-    el("td", { class: "n " + tone(b.best.return_pct) }, pct(b.best.return_pct)),
-    el("td", { class: "n" }, String(b.best.trades), ...(b.best.trades < 20 ? [el("span", { class: "tag" }, "få")] : [])))),
-    ...none.map((b) => el("tr", {}, el("td", { class: "mute dm" }, "–"), el("td", {}, link(b)),
-      el("td", { class: "mute" }, "Ingen data endnu"), el("td", { class: "n mute" }, "–"), el("td", { class: "n mute" }, "–"))));
-}
-
-function selectBot(key, sub) {
-  if (key === OV || !BOTS.some((b) => b.key === key)) {
-    cur = null; curKey = OV; curSub = null; setRoute(OV);
-    drawTabs(); drawSub();
-    $("frame").hidden = true; $("msg").hidden = true; $("overview").hidden = false;
-    return loadOverview();
+    const d = await api("/api/bot/" + b.key);
+    if (my !== seq) return;
+    const j = JSON.stringify(d);
+    if (!force && j === lastJson) return;
+    lastJson = j; DATA = d; render(true);
+  } catch (e) {
+    if (my === seq && !DATA) view(h("div", { class: "msg" }, h("h2", {}, "Kunne ikke hente data"), h("p", {}, `${b.name} svarer ikke som forventet. Prøver igen om lidt.`)));
   }
-  $("overview").hidden = true;
-  cur = BOTS.find((b) => b.key === key) || BOTS[0];
-  curKey = cur.key;
-  curSub = sub || cur.tabs[0]?.[0] || null;
-  setRoute(cur.key, curSub);
-  drawTabs(); drawSub();
-  if (!cur.configured) {
-    return message(`<h2>${cur.name}</h2><p>Koden er ikke koblet på endnu.</p>
-      <p>Sæt <code>repo</code> for <code>${cur.key}</code> i <code>bots.json</code> og kør <code>python3 -m hub fetch</code>.</p>`);
+}
+function view(...kids) { $("main").replaceChildren(h("div", { class: "view" }, ...kids)); }
+
+function render(keepScroll) {
+  if (curKey === OV) { load(true); return; }
+  const b = bot();
+  if (!b) { go(OV); return; }
+  if (!b.configured) return view(h("div", { class: "msg" }, h("h2", {}, b.name), h("p", {}, "Koden er ikke koblet på endnu."),
+    h("p", {}, "Sæt ", h("code", {}, "repo"), " i ", h("code", {}, "bots.json"), " og kør ", h("code", {}, "python3 -m hub fetch"), ".")));
+  if (!b.up) return view(h("div", { class: "msg" }, h("h2", {}, `${b.name} kører ikke`), h("p", {}, "Start den med ", h("code", {}, "python3 -m hub run"), ".")));
+  if (!DATA) { load(true); return; }
+  const y = window.scrollY;
+  ({ overblik: vOverblik, strategier: vStrategier, desk: vDesk, handler: vHandler })[curSub]();
+  if (keepScroll) window.scrollTo({ top: y });
+}
+
+/* ---------- fælles dele ---------- */
+const sorted = () => [...DATA.strategies].sort((a, b) => (b.return_pct ?? -1e9) - (a.return_pct ?? -1e9));
+function colors(list) { const m = {}; let i = 0; for (const s of list) { if (i >= PALETTE.length) break; if ((s.curve || []).length > 1) m[s.key] = PALETTE[i++]; } return m; }
+function kpi(l, v, s, cls) { return h("div", { class: "card kpi" }, h("div", { class: "l" }, l), h("div", { class: "v num " + (cls || "") }, v), s && h("div", { class: "s" }, s)); }
+
+/* ---------- OVERBLIK ---------- */
+function vOverblik() {
+  const list = sorted(), col = colors(list), best = list[0];
+  const plus = list.filter((s) => s.return_pct > 0).length;
+  const avg = list.length ? list.reduce((a, s) => a + (s.return_pct || 0), 0) / list.length : 0;
+  const closed = list.reduce((a, s) => a + (s.trades || 0), 0);
+  const wrap = h("div", { class: "chart", id: "chart" });
+  const legend = h("div", { class: "legend" });
+  view(
+    h("div", { class: "grid kpis" },
+      kpi("Bedste strategi", best ? pct(best.return_pct) : "–", best && best.name, best && tone(best.return_pct)),
+      kpi("Strategier i plus", `${plus} af ${list.length}`),
+      kpi("Gennemsnit", pct(avg), "alle strategier", tone(avg)),
+      kpi("Lukkede handler", String(closed), closed < 20 ? "for få til at drage konklusioner" : "")),
+    h("div", { class: "card" },
+      h("div", { class: "head" }, h("h2", {}, "Afkast over tid"), h("p", {}, "I procent af papirkontoen. De bedste strategier er farvet.")),
+      wrap, legend),
+    h("div", { class: "card" },
+      h("div", { class: "head" }, h("h2", {}, "Alle strategier"), h("p", {}, "Sorteret efter afkast")),
+      h("div", { class: "tw" }, h("table", {},
+        h("thead", {}, h("tr", {}, h("th", {}, "Strategi"), h("th", { class: "n" }, "Afkast"), h("th", { class: "n" }, "Handler"),
+          h("th", { class: "n hide-m" }, "Vundet"), h("th", { class: "n hide-m" }, "Åbne"), h("th", { class: "n hide-m" }, "Maks. fald"))),
+        h("tbody", {}, list.map((s) => h("tr", { onmouseenter: () => focusLine(s.key), onmouseleave: () => focusLine(null) },
+          h("td", { class: "name" }, h("i", { class: "sw", style: "background:" + (col[s.key] || "var(--grey)") }),
+            s.name, s.group && h("span", { class: "tag hide-m" }, s.group)),
+          h("td", { class: "n " + tone(s.return_pct) }, pct(s.return_pct)),
+          h("td", { class: "n" }, String(s.trades ?? 0)),
+          h("td", { class: "n hide-m" }, s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %"),
+          h("td", { class: "n hide-m" }, String(s.open ?? 0)),
+          h("td", { class: "n hide-m" }, s.max_dd == null ? "–" : nf(s.max_dd) + " %"))))))));
+  drawChart(wrap, list, col);
+  legend.replaceChildren(...list.filter((s) => col[s.key]).map((s) => h("span", {}, h("i", { style: "background:" + col[s.key] }), s.name)),
+    list.some((s) => (s.curve || []).length > 1 && !col[s.key]) ? h("span", { class: "mute" }, h("i", { style: "background:var(--grey)" }), "øvrige") : null);
+}
+
+/* glat kurve (monoton kubisk interpolation – ingen overshoot) */
+function smooth(p) {
+  const n = p.length; if (n < 2) return "";
+  if (n === 2) return `M${p[0][0]},${p[0][1]}L${p[1][0]},${p[1][1]}`;
+  const dx = [], m = [], t = new Array(n);
+  for (let i = 0; i < n - 1; i++) { dx[i] = p[i + 1][0] - p[i][0]; m[i] = dx[i] ? (p[i + 1][1] - p[i][1]) / dx[i] : 0; }
+  t[0] = m[0]; t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (m[i] === 0) { t[i] = t[i + 1] = 0; continue; }
+    const a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
   }
-  if (!cur.up) {
-    return message(`<h2>${cur.name} kører ikke</h2><p>Start den med <code>python3 -m hub run</code>.</p>`);
+  let d = `M${p[0][0]},${p[0][1]}`;
+  for (let i = 0; i < n - 1; i++) {
+    const w = dx[i] / 3;
+    d += `C${p[i][0] + w},${p[i][1] + t[i] * w},${p[i + 1][0] - w},${p[i + 1][1] - t[i + 1] * w},${p[i + 1][0]},${p[i + 1][1]}`;
   }
-  $("msg").hidden = true; $("frame").hidden = false;
-  const url = "/b/" + cur.key + "/";
-  if (!$("frame").src.endsWith(url)) $("frame").src = url; else applySub();
+  return d;
 }
-function selectSub(id) { curSub = id; setRoute(cur.key, id); drawSub(); applySub(); }
-
-// Klik på botens egen fane inde i iframen (samme oprindelse via hubbens proxy).
-// Nogle dashboards bygger fanerne med JS, så vi prøver igen i et par sekunder.
-function applySub(tries = 0) {
-  const tab = cur?.tabs.find((t) => t[0] === curSub);
-  if (!tab) return;
-  let node = null;
-  try { node = $("frame").contentDocument.querySelector(tab[2]); } catch (e) {}
-  if (node) node.click();
-  else if (tries < 30) setTimeout(() => applySub(tries + 1), 100);
+function thin(c, max = 180) {
+  const seen = new Map(); for (const p of c) seen.set(p[0], p[1]);
+  let a = [...seen].sort((x, y) => x[0] - y[0]);
+  if (a.length > max) { const k = a.length / max; a = Array.from({ length: max }, (_, i) => a[Math.floor(i * k)]).concat([a[a.length - 1]]); }
+  return a;
 }
-$("frame").addEventListener("load", () => applySub());
-
-async function refresh() {
-  try {
-    const r = await fetch("/api/bots", { cache: "no-store" });
-    if (!r.ok) throw 0;
-    const next = await r.json();
-    const wasUp = cur?.up;
-    BOTS = next;
-    if (cur) cur = BOTS.find((b) => b.key === cur.key);
-    drawTabs();
-    if (curKey === OV) loadOverview();
-    if (cur && cur.up !== wasUp && !(cur.up && wasUp)) selectBot(cur.key, curSub);
-  } catch (e) { /* hubben er midlertidigt væk – prøv igen næste gang */ }
+function niceTicks(lo, hi, n = 5) {
+  const span = hi - lo || 1, raw = span / n, mag = 10 ** Math.floor(Math.log10(raw)), f = raw / mag;
+  const step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v / step) * step);
+  return out;
+}
+function drawChart(el, list, col) {
+  const curves = list.map((s) => ({ s, pts: thin(s.curve || []) })).filter((c) => c.pts.length > 1);
+  if (!curves.length) { el.style.height = "auto"; el.replaceChildren(h("div", { class: "empty" }, "Kurven vises, når botten har kørt lidt og har samlet flere målinger.")); return; }
+  const W = Math.max(280, el.clientWidth), H = el.clientHeight, M = { l: 52, r: 14, t: 10, b: 28 };
+  const timeBased = curves.every((c) => c.pts[0][0] > 1e9);
+  const t0 = Math.min(...curves.map((c) => c.pts[0][0])), t1 = Math.max(...curves.map((c) => c.pts[c.pts.length - 1][0]));
+  const fx = (c, p, i) => timeBased ? (p[0] - t0) / ((t1 - t0) || 1) : i / ((c.pts.length - 1) || 1);
+  const all = curves.flatMap((c) => c.pts.map((p) => p[1])).concat([0]);
+  let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo || 1) * .1; lo -= pad; hi += pad;
+  const X = (f) => M.l + f * (W - M.l - M.r), Y = (v) => M.t + (1 - (v - lo) / (hi - lo)) * (H - M.t - M.b);
+  const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Afkast over tid for alle strategier" });
+  niceTicks(lo, hi).forEach((v) => {
+    svg.append(sv("line", { x1: M.l, x2: W - M.r, y1: Y(v), y2: Y(v), stroke: "var(--line)", "stroke-dasharray": v === 0 ? "0" : "3 4", "stroke-width": v === 0 ? 1.4 : 1 }));
+    const t = sv("text", { x: M.l - 8, y: Y(v) + 4, "text-anchor": "end", fill: "var(--mute)", "font-size": 11.5 });
+    t.textContent = nf(v, Math.abs(v) < 10 && v % 1 ? 1 : 0) + " %"; svg.append(t);
+  });
+  if (timeBased) for (let i = 0; i <= 4; i++) {
+    const f = i / 4, d = new Date((t0 + f * (t1 - t0)) * 1000), span = t1 - t0;
+    const t = sv("text", { x: X(f), y: H - 6, "text-anchor": i === 0 ? "start" : i === 4 ? "end" : "middle", fill: "var(--mute)", "font-size": 11.5 });
+    t.textContent = span > 172800 ? d.toLocaleDateString("da-DK", { day: "numeric", month: "short" }) : d.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" }); svg.append(t);
+  }
+  const lines = {};
+  [...curves].sort((a, b) => (col[a.s.key] ? 1 : 0) - (col[b.s.key] ? 1 : 0)).forEach((c) => {
+    const px = c.pts.map((p, i) => [X(fx(c, p, i)), Y(p[1])]), on = !!col[c.s.key];
+    const path = sv("path", { class: "ln", d: smooth(px), stroke: on ? col[c.s.key] : "var(--grey)", "stroke-width": on ? 2.4 : 1.2, "data-base": on ? 2.4 : 1.2 });
+    lines[c.s.key] = path; svg.append(path);
+  });
+  const cross = sv("line", { y1: M.t, y2: H - M.b, stroke: "var(--mute)", "stroke-width": 1, opacity: 0 }); svg.append(cross);
+  const tip = h("div", { class: "tip" });
+  el.replaceChildren(svg, tip);
+  chartState = { lines };
+  const shown = curves.filter((c) => col[c.s.key]);
+  svg.addEventListener("pointermove", (ev) => {
+    const r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) * (W / r.width), f = Math.min(1, Math.max(0, (x - M.l) / (W - M.l - M.r)));
+    const rows = shown.map((c) => {
+      let bi = 0, bd = 1e9; c.pts.forEach((p, i) => { const d = Math.abs(fx(c, p, i) - f); if (d < bd) { bd = d; bi = i; } });
+      return { c, p: c.pts[bi] };
+    });
+    cross.setAttribute("x1", X(f)); cross.setAttribute("x2", X(f)); cross.setAttribute("opacity", .5);
+    const lbl = timeBased ? new Date((t0 + f * (t1 - t0)) * 1000).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+    tip.replaceChildren(h("div", { class: "t" }, lbl), ...rows.sort((a, b) => b.p[1] - a.p[1]).map((q) => h("div", { class: "r" },
+      h("span", {}, h("i", { style: `width:8px;height:8px;border-radius:50%;background:${col[q.c.s.key]};display:inline-block;flex:none` }), q.c.s.name), h("b", { class: "num " + tone(q.p[1]) }, pct(q.p[1])))));
+    tip.style.opacity = 1;
+    const tw = tip.offsetWidth, left = X(f) / W * r.width;
+    tip.style.left = Math.max(4, Math.min(r.width - tw - 4, left + 14 + tw > r.width ? left - tw - 14 : left + 14)) + "px"; tip.style.top = "8px";
+  });
+  svg.addEventListener("pointerleave", () => { tip.style.opacity = 0; cross.setAttribute("opacity", 0); });
+}
+function focusLine(key) {
+  if (!chartState) return;
+  for (const [k, p] of Object.entries(chartState.lines)) {
+    p.classList.toggle("dim", key != null && k !== key);
+    p.setAttribute("stroke-width", key === k ? 3.4 : p.getAttribute("data-base"));
+  }
 }
 
+/* ---------- STRATEGIER ---------- */
+function vStrategier() {
+  const q = (extra.q || "").toLowerCase(), by = extra.sort || "afkast";
+  let list = sorted();
+  if (by === "navn") list = [...list].sort((a, b) => a.name.localeCompare(b.name, "da"));
+  if (by === "handler") list = [...list].sort((a, b) => (b.trades || 0) - (a.trades || 0));
+  const shown = list.filter((s) => !q || (s.name + " " + (s.description || "") + " " + (s.group || "")).toLowerCase().includes(q));
+  const cards = shown.map((s) => h("article", { class: "card sc" },
+    h("div", { class: "top" }, h("div", {}, h("h3", {}, s.name), s.group && h("span", { class: "grp" }, s.group)),
+      h("div", { class: "big num " + tone(s.return_pct) }, pct(s.return_pct))),
+    s.description && h("p", { class: "desc" }, s.description),
+    h("div", { class: "stats" },
+      h("div", {}, h("b", {}, String(s.trades ?? 0)), h("span", {}, "Handler")),
+      h("div", {}, h("b", {}, s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %"), h("span", {}, "Vundet")),
+      h("div", {}, h("b", {}, String(s.open ?? 0)), h("span", {}, "Åbne")),
+      h("div", {}, h("b", {}, s.max_dd == null ? "–" : nf(s.max_dd) + " %"), h("span", {}, "Maks. fald"))),
+    s.rules.length ? h("div", { class: "rules" }, h("h4", {}, "Regler"), h("div", { class: "kvs" }, s.rules.map(([a, b]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, b))))) : null));
+  const inp = h("input", { type: "search", placeholder: "Søg i strategier …", value: extra.q || "", "aria-label": "Søg i strategier" });
+  const sel = h("select", { "aria-label": "Sortér", onchange: (e) => { extra.sort = e.target.value; vStrategier(); } },
+    [["afkast", "Sortér: afkast"], ["navn", "Sortér: navn"], ["handler", "Sortér: handler"]].map(([v, t]) => h("option", { value: v, selected: v === by }, t)));
+  const box = h("div", {}, shown.length ? h("div", { class: "strat" }, cards) : h("div", { class: "card empty" }, "Ingen strategier matcher."));
+  inp.oninput = () => { extra.q = inp.value; vStrategierList(box); };
+  view(h("div", { class: "tools" }, inp, sel), box);
+}
+function vStrategierList(box) {   // kun listen opdateres under søgning, så feltet beholder fokus
+  const keep = extra.q; vStrategier(); const n = document.querySelector(".tools input"); n.focus(); n.setSelectionRange(keep.length, keep.length);
+}
+
+/* ---------- DESK ---------- */
+function vDesk() {
+  const d = DATA.desk, b = bot();
+  view(
+    h("div", { class: "grid kpis" }, d.kpis.map(([l, v]) => kpi(l, String(v)))),
+    h("div", { class: "sections" }, d.sections.filter((s) => s.rows.length).map((s) => h("section", { class: "card" }, h("h2", {}, s.title),
+      h("div", { class: "kvs" }, s.rows.map(([a, c]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, c === "" ? "" : String(c)))))))),
+    h("p", { class: "note" }, h("a", { class: "ext", href: `/b/${b.key}/`, target: "_blank", rel: "noopener" }, "Åbn botens originale dashboard ↗")));
+}
+
+/* ---------- HANDLER ---------- */
+function vHandler() {
+  const mode = extra.mode || "closed", strat = extra.strat || "", limit = extra.limit || 40;
+  const rows = DATA.trades[mode === "open" ? "open" : "closed"].filter((r) => !strat || r.strategy === strat);
+  const names = [...new Set([...DATA.trades.open, ...DATA.trades.closed].map((r) => r.strategy))].sort((a, b) => a.localeCompare(b, "da"));
+  const seg = h("div", { class: "seg", role: "group", "aria-label": "Visning" }, [["closed", `Lukkede (${DATA.trades.closed.length})`], ["open", `Åbne (${DATA.trades.open.length})`]].map(([v, t]) =>
+    h("button", { type: "button", "aria-pressed": String(v === mode), onclick: () => { extra.mode = v; extra.limit = 40; vHandler(); } }, t)));
+  const sel = h("select", { "aria-label": "Filtrér strategi", onchange: (e) => { extra.strat = e.target.value; extra.limit = 40; vHandler(); } },
+    h("option", { value: "" }, "Alle strategier"), names.map((n) => h("option", { value: n, selected: n === strat }, n)));
+  const total = rows.length;
+  view(h("div", { class: "tools" }, seg, sel),
+    h("div", { class: "card" },
+      total ? h("div", { class: "tw" }, h("table", {},
+        h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Strategi"), h("th", {}, "Marked"), h("th", { class: "hide-m" }, "Retning"),
+          h("th", { class: "n" }, "Resultat"), h("th", { class: "hide-m" }, "Info"))),
+        h("tbody", {}, rows.slice(0, limit).map((r) => h("tr", {},
+          h("td", { class: "mute" }, when(r.ts)), h("td", { class: "name" }, r.strategy),
+          h("td", { class: "name" }, r.symbol, h("span", { class: "under" }, r.side)),
+          h("td", { class: "hide-m" }, r.side || "–"),
+          h("td", { class: "n " + tone(r.result_pct) }, pct(r.result_pct)),
+          h("td", { class: "hide-m mute", style: "white-space:normal;max-width:260px" }, r.detail || "–")))))) :
+        h("div", { class: "empty" }, mode === "open" ? "Ingen åbne handler lige nu." : "Ingen lukkede handler endnu. De dukker op, når en strategi har solgt noget."),
+      total > limit ? h("button", { class: "more", type: "button", onclick: () => { extra.limit = limit + 60; vHandler(); } }, `Vis flere (${total - limit} tilbage)`) : null));
+}
+
+/* ---------- HUB-OVERBLIK (alle botter) ---------- */
+function renderHub(rows) {
+  const link = (b) => h("a", { href: "#" + b.key }, b.name);
+  const ranked = rows.filter((b) => b.best).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !b.best);
+  const live = rows.filter((b) => b.up).length;
+  view(
+    h("div", { class: "grid kpis" },
+      kpi("Botter der kører", `${live} af ${rows.length}`),
+      kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct))),
+    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Kører de?"), h("p", {}, "Status for alle botter lige nu")),
+      h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", { class: "hide-m" }, "Investerer i"), h("th", {}, "Status"),
+        h("th", { class: "n" }, h("span", { class: "hide-m" }, "Strategier i plus"), h("span", { class: "under" }, "I plus")))),
+        h("tbody", {}, rows.map((b) => {
+          const text = !b.configured ? "Ikke koblet på" : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : "Kører";
+          return h("tr", {}, h("td", { class: "name" }, link(b), h("span", { class: "under" }, b.invests || "")), h("td", { class: "hide-m" }, b.invests || "–"),
+            h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + (!b.configured ? "" : b.up ? "up" : "down") }), text)),
+            h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));
+        }))))),
+    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Bedste strategi pr. bot"), h("p", {}, "Afkast i procent af papirkontoen")),
+      h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "hide-m" }, "#"), h("th", {}, "Bot"), h("th", {}, "Bedste strategi"), h("th", { class: "n" }, "Afkast"),
+        h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")))),
+        h("tbody", {}, ranked.map((b, i) => h("tr", {}, h("td", { class: "mute hide-m" }, String(i + 1)), h("td", {}, link(b)), h("td", { class: "name" }, b.best.name),
+          h("td", { class: "n " + tone(b.best.return_pct) }, pct(b.best.return_pct)),
+          h("td", { class: "n" }, String(b.best.trades), b.best.trades < 20 ? h("span", { class: "tag hide-m" }, "få") : null))),
+          none.map((b) => h("tr", {}, h("td", { class: "mute hide-m" }, "–"), h("td", {}, link(b)), h("td", { class: "mute" }, "Ingen data endnu"), h("td", { class: "n mute" }, "–"), h("td", { class: "n mute" }, "–"))))))),
+    h("p", { class: "note" }, "Kun papirhandel med fiktive penge. Med få lukkede handler er tallene mest held eller uheld. Afkast er uden garanti for, at det holder med rigtige penge."));
+}
+
+/* ---------- start ---------- */
+let rz;
+addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (curKey !== OV && curSub === "overblik" && DATA) vOverblik(); }, 150); });
+addEventListener("hashchange", () => { const [b, s] = location.hash.slice(1).split("/"); if (b && (b !== curKey || (s || "") !== curSub)) go(BOTS.some((x) => x.key === b) ? b : OV, s); });
 (async function init() {
-  await refresh();
-  const [b, s] = route();
-  selectBot(BOTS.some((x) => x.key === b) ? b : OV, s);
-  setInterval(refresh, 10000);
+  await refreshBots();
+  const [b, s] = location.hash.slice(1).split("/");
+  go(BOTS.some((x) => x.key === b) ? b : OV, s);
+  setInterval(refreshBots, 10000);
+  setInterval(() => load(false), 15000);
 })();
-addEventListener("hashchange", () => { const [b, s] = route(); if (b && (b !== curKey || (s || null) !== curSub)) selectBot(b, s); });
 </script>
 </body>
 </html>

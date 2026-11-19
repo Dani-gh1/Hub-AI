@@ -7,9 +7,12 @@ import json
 import os
 import re
 import socket
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+from .adapters import normalize
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -57,18 +60,26 @@ def upstream(bot: dict, sub: str, query: str = "", timeout: float = 15):
         return e.code, e.headers.get("Content-Type", "text/plain"), e.read()
 
 
-def extract_best(data, cfg: dict) -> dict | None:
-    """Finder strategien med højest afkast i et dashboards JSON ud fra reglen i bots.json."""
-    rows = data
-    for part in [p for p in cfg.get("list", "").split(".") if p]:
-        rows = rows.get(part) if isinstance(rows, dict) else None
-    rows = [r for r in (rows or []) if isinstance(r, dict) and isinstance(r.get(cfg["ret"]), (int, float))]
+_cache: dict[str, tuple[float, dict]] = {}
+
+
+def bot_data(bot: dict) -> dict:
+    """Fælles format for én bot (cachet i 5 sekunder, så flere faner ikke belaster botten)."""
+    hit = _cache.get(bot["key"])
+    if hit and time.time() - hit[0] < 5:
+        return hit[1]
+    data = normalize(bot, lambda sub: upstream(bot, sub, timeout=10))
+    _cache[bot["key"]] = (time.time(), data)
+    return data
+
+
+def best_of(strategies: list[dict]) -> dict | None:
+    rows = [s for s in strategies if isinstance(s.get("return_pct"), (int, float))]
     if not rows:
         return None
-    top = max(rows, key=lambda r: r[cfg["ret"]])
-    name = " · ".join(str(top[k]) for k in cfg["name"] if top.get(k))
-    return {"name": name, "return_pct": round(top[cfg["ret"]], 2), "trades": top.get(cfg.get("trades", "")) or 0,
-            "count": len(rows), "positive": sum(1 for r in rows if r[cfg["ret"]] > 0)}
+    top = max(rows, key=lambda r: r["return_pct"])
+    return {"name": top["name"], "return_pct": round(top["return_pct"], 2), "trades": top.get("trades") or 0,
+            "count": len(rows), "positive": sum(1 for r in rows if r["return_pct"] > 0)}
 
 
 def bot_overview(bot: dict) -> dict:
@@ -77,12 +88,10 @@ def bot_overview(bot: dict) -> dict:
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
-    if out["up"] and bot.get("best"):
+    if out["up"]:
         try:
-            code, _ctype, body = upstream(bot, bot["best"]["path"], timeout=5)
-            if code == 200:
-                out["best"] = extract_best(json.loads(body), bot["best"])
-        except (OSError, ValueError):
+            out["best"] = best_of(bot_data(bot)["strategies"])
+        except (OSError, ValueError, KeyError, TypeError):
             pass
     return out
 
@@ -126,13 +135,19 @@ def make_handler(bots: list[dict]):
                     return self._send(200, "text/html; charset=utf-8", SHELL.read_bytes())
                 if path == "/api/bots":
                     out = [{"key": b["key"], "name": b["name"], "desc": b.get("desc", ""),
-                            "short": b.get("short", ""), "tabs": [[t[0], t[1], t[2]] for t in b.get("tabs", [])],
+                            "short": b.get("short", ""),
                             "configured": bool(b.get("repo")), "up": port_open(b["port"])} for b in bots]
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
                         out = list(ex.map(bot_overview, bots))
                     return self._send(200, "application/json", json.dumps(out).encode())
+                m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
+                if m and m.group(1) in by_key:
+                    try:
+                        return self._send(200, "application/json", json.dumps(bot_data(by_key[m.group(1)])).encode())
+                    except (OSError, ValueError, KeyError, TypeError) as e:
+                        return self._send(502, "application/json", json.dumps({"error": "Botten svarer ikke som forventet", "detail": str(e)[:200]}).encode())
                 m = re.match(r"^/b/([a-z0-9_-]+)(/.*)?$", path)
                 if m and m.group(1) in by_key:
                     if m.group(2) is None:
