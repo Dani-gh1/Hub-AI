@@ -153,7 +153,8 @@ def forex(get):
                         pct_of(t, "pnl_pct", "live_pct"), t.get("reason", "")) for t in tr.get("open_positions", [])]
     closed = [trade_row(t.get("strategy"), t.get("instrument"), t.get("direction"), t.get("closed_at") or t.get("opened_at"),
                         pct_of(t, "pnl_pct"), t.get("reason", "")) for t in tr.get("trades", []) if t.get("closed_at")]
-    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed}}
+    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
+            "scan": ts(bot.get("heartbeat"))}
 
 
 def delphi(get):
@@ -189,7 +190,8 @@ def delphi(get):
         row = trade_row(t.get("strategy_name"), t.get("title"), t.get("side"), t.get("opened_ts") if is_open else (t.get("closed_ts") or t.get("opened_ts")),
                         res, t.get("reason") if is_open else t.get("exit_reason"))
         (opened if is_open else closed).append(row)
-    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed}}
+    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
+            "scan": ts(last.get("finished_utc"))}
 
 
 def quasar(get):
@@ -213,7 +215,8 @@ def quasar(get):
               for t in tr.get("open", [])]
     closed = [trade_row(t.get("strategy"), t.get("symbol"), side(t), t.get("closed_ms") or t.get("opened_ms"), pct_of(t, "pnl_pct", "roi_margin_pct"), t.get("reason", ""))
               for t in tr.get("closed", [])]
-    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed}}
+    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
+            "scan": ts(ov.get("last_scan_ms")) or None}
 
 
 def orion(get):
@@ -241,7 +244,8 @@ def orion(get):
             "sections": [{"title": g["title"], "rows": [[a, b] for a, b in g.get("rows", [])]} for g in ru.get("groups", [])]}
     closed = [trade_row(t.get("strategy") or t.get("label"), t.get("symbol"), t.get("side") or "long", t.get("closed_at") or t.get("closed_ts") or t.get("ts"),
                         pct_of(t, "pnl_pct", "ret_pct"), t.get("reason") or t.get("exit_reason", "")) for t in get("/api/trades").get("closed", [])]
-    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed}}
+    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
+            "scan": ts(ov.get("updated")) or ts(status.get("updated"))}
 
 
 def comet(get):
@@ -265,7 +269,8 @@ def comet(get):
                                  t.get("opened_at") if o else (t.get("closed_at") or t.get("opened_at")),
                                  pct_of(t, "live_pct") if o else pct_of(t, "pnl_pct"), t.get("exit_reason") or "")
     return {"strategies": strategies, "desk": desk,
-            "trades": {"open": [row(t, True) for t in tr.get("open", [])], "closed": [row(t, False) for t in tr.get("closed", [])]}}
+            "trades": {"open": [row(t, True) for t in tr.get("open", [])], "closed": [row(t, False) for t in tr.get("closed", [])]},
+            "scan": ts(stt.get("last_price_tick")) or ts(stt.get("updated_at"))}
 
 
 def nova(get):
@@ -296,7 +301,8 @@ def nova(get):
         for t in b.get("open") or []:
             if isinstance(t, dict):
                 opened.append(trade_row(b["name"], t.get("symbol"), "long", t.get("opened_ts") or t.get("ts"), pct_of(t, "pnl_pct", "live_pct"), ""))
-    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed}}
+    return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
+            "scan": ts((stat.get("last_scan") or {}).get("ts")) or ts(stat.get("last_event_ts"))}
 
 
 ADAPTERS = {"forex": forex, "delphi": delphi, "quasar": quasar, "orion": orion, "comet": comet, "nova": nova}
@@ -311,6 +317,7 @@ def normalize(bot: dict, fetch) -> dict:
         return json.loads(body)
 
     data = ADAPTERS[bot["adapter"]](get)
+    data["scan"] = data.get("scan") or None        # sekunder siden epoch for botens seneste scanning, hvis den kender den
     for t in ("open", "closed"):
         data["trades"][t].sort(key=lambda r: r["ts"] or 0, reverse=True)
         data["trades"][t] = data["trades"][t][:300]

@@ -114,6 +114,42 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(len(r.procs), 1)
         r.dir.cleanup()
 
+    def test_a_bot_that_runs_but_stopped_scanning_is_restarted(self):
+        r = Rig()
+        r.unit.health = lambda: self.age
+        self.age = 60.0
+        r.sup.tick()
+        r.open = True
+        r.advance(sv.GRACE + 5)                    # en nystartet bot får lov at komme i gang
+        self.assertFalse(r.procs[0].terminated)    # scanner fint
+        self.age = sv.STALL_AFTER + 60             # … men står nu stille
+        r.advance(sv.HEALTH_EVERY + 1)
+        self.assertTrue(r.procs[0].terminated)
+        r.open = False
+        r.advance(sv.BACKOFF_START + 1)
+        self.assertEqual(len(r.procs), 2)
+        r.dir.cleanup()
+
+    def test_unknown_scan_time_never_triggers_a_restart(self):
+        r = Rig()
+        r.unit.health = lambda: None               # fx børsen er spærret: genstart hjælper ikke
+        r.sup.tick()
+        r.open = True
+        r.advance(sv.GRACE + 5)
+        r.advance(sv.STALL_AFTER * 2)
+        self.assertFalse(r.procs[0].terminated)
+        r.dir.cleanup()
+
+    def test_a_failing_health_check_does_not_kill_the_supervisor(self):
+        r = Rig()
+        r.unit.health = lambda: 1 / 0
+        r.sup.tick()
+        r.open = True
+        r.advance(sv.GRACE + 5)
+        r.advance(sv.HEALTH_EVERY + 1)
+        self.assertFalse(r.procs[0].terminated)
+        r.dir.cleanup()
+
     def test_units_without_a_port_are_not_watched_for_hanging(self):
         r = Rig(port=None)
         r.sup.tick()

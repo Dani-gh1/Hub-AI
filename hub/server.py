@@ -93,6 +93,19 @@ def bot_data(bot: dict) -> dict:
     return data
 
 
+STALE_AFTER_S = 20 * 60          # så længe uden scanning før overblikket advarer
+RESTART_AFTER_S = 45 * 60        # så længe uden scanning før vagthunden genstarter en bot
+
+
+def scan_age(bot: dict) -> float | None:
+    """Sekunder siden botten sidst scannede markedet, eller None hvis det ikke kan ses."""
+    try:
+        ts = bot_data(bot).get("scan")
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return max(0.0, time.time() - ts) if ts else None
+
+
 def best_of(strategies: list[dict]) -> dict | None:
     rows = [s for s in strategies if isinstance(s.get("return_pct"), (int, float))]
     if not rows:
@@ -109,9 +122,12 @@ def bot_overview(bot: dict) -> dict:
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
+    out["scan_age"] = None
     if out["up"]:
         try:
-            out["best"] = best_of(bot_data(bot)["strategies"])
+            data = bot_data(bot)
+            out["best"] = best_of(data["strategies"])
+            out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
         except (OSError, ValueError, KeyError, TypeError):
             pass
     return out

@@ -93,8 +93,13 @@ Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`,
 python3 -m unittest discover -s tests -t .
 ```
 
-## Hemmeligheder
+## Datakilder og nøgler
 
-Atlas og Meridian henter live kurser fra OANDA og kræver miljøvariablen `OANDA_TOKEN`, før deres `run` virker.
-Mangler den, starter hubben kun deres dashboard (gemte data og regler), og de handler ikke. Sæt den, før du kører
-`python3 -m hub run`, hvis de skal køre live.
+Alle botter kan scanne markedet uden nøgler eller opsætning:
+
+* **Atlas og Meridian** (forex og råvarer) bruger Yahoo Finance, hvis ingen nøgle er sat. Sæt `OANDA_TOKEN` i
+  `/etc/hub.env` (Mac: `~/Library/Application Support/Hub AI/hub.env`) for rigtig bid/ask fra OANDA. Så skifter de selv.
+* **Quasar** (krypto-futures) prøver Binance og skifter selv til Bybit, hvis Binance er spærret i dit land eller hos din
+  server-udbyder.
+* Overblikket viser for hver bot, hvornår den **sidst scannede**. Står en bot stille i 20 minutter, vises "Scanner ikke",
+  og efter 45 minutter genstarter vagthunden den.

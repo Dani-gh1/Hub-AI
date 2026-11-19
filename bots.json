@@ -11,10 +11,6 @@
     "config": "desk.config",
     "args": [
      "run"
-    ],
-    "needs_env": "OANDA_TOKEN",
-    "fallback_args": [
-     "dashboard"
     ]
    },
    "hide": "nav[role=tablist]",
@@ -33,10 +29,6 @@
     "config": "desk.config",
     "args": [
      "run"
-    ],
-    "needs_env": "OANDA_TOKEN",
-    "fallback_args": [
-     "dashboard"
     ]
    },
    "hide": "nav[role=tablist]",

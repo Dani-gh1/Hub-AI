@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .server import ROOT, bot_host, load_bots, port_open, serve
+from .server import ROOT, bot_host, load_bots, port_open, scan_age, serve
 
 BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
 
@@ -79,7 +79,8 @@ def cmd_run(bots, host: str, port: int) -> None:
             continue
         for i, cmd in enumerate(commands(b)):
             units.append(Unit(b["key"], b["name"] if i == 0 else f"{b['name']} (motor)", cmd, d, b["port"] if i == 0 else None,
-                              None if i == 0 else f"{b['key']}-motor"))
+                              None if i == 0 else f"{b['key']}-motor",
+                              health=(lambda b=b: scan_age(b)) if i == 0 else None))
     sup = Supervisor(units, Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs")), port_open)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     sup.start_thread()                       # botterne starter i baggrunden, så hubben svarer med det samme

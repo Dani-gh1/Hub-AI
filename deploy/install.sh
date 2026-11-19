@@ -30,7 +30,7 @@ if [ "$OS" = Darwin ]; then
   if ! grep -q '^HUB_PASSWORD=' "$ENV_FILE"; then NEWPASS="$(newpass)"; echo "HUB_PASSWORD=$NEWPASS" >> "$ENV_FILE"; fi
   # Den rigtige Nova-papirkonto ligger på serveren. En kopi her ville blive en anden konto, så den slås fra.
   if [ -n "${HUB_NOVA_ADDR:-}" ]; then add HUB_EXTERNAL_NOVA "$HUB_NOVA_ADDR"; else add HUB_DISABLE_NOVA 1; fi
-  grep -q 'OANDA_TOKEN=' "$ENV_FILE" || echo '#OANDA_TOKEN=   # fjern # og indsæt nøglen, hvis Atlas og Meridian skal handle live' >> "$ENV_FILE"
+  grep -q 'OANDA_TOKEN=' "$ENV_FILE" || echo '#OANDA_TOKEN=   # valgfri: giver Atlas og Meridian rigtig bid/ask. Uden den bruger de Yahoo Finance' >> "$ENV_FILE"
   echo "• Henter botterne (første gang kan det tage et minut) …"
   ( set -a; . "$ENV_FILE"; set +a; cd "$HUB_DIR" && "$PY" -m hub fetch )
 
@@ -113,7 +113,7 @@ if [ -n "$NOVA_PORT" ]; then
   add HUB_EXTERNAL_NOVA "$NOVA_PORT"; add HUB_UPDATE_NOVA_DIR "$NOVA_DIR"; add HUB_UPDATE_NOVA_SERVICE "$NOVA_SERVICE"
   add HUB_UPDATE_NOVA_BRANCH "$(as_user git -C "$NOVA_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 fi
-grep -q 'OANDA_TOKEN=' "$ENV_FILE" || echo '#OANDA_TOKEN=   # fjern # og indsæt nøglen, hvis Atlas og Meridian skal handle live' >> "$ENV_FILE"
+grep -q 'OANDA_TOKEN=' "$ENV_FILE" || echo '#OANDA_TOKEN=   # valgfri: giver Atlas og Meridian rigtig bid/ask. Uden den bruger de Yahoo Finance' >> "$ENV_FILE"
 
 # --- systemd ---
 sub() { sed -e "s#@USER@#$RUN_USER#g" -e "s#@DIR@#$HUB_DIR#g" -e "s#@PY@#$PY#g" "$1" > "$UNIT_DIR/$(basename "$1")"; }

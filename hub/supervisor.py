@@ -4,6 +4,8 @@
   Har den kørt stabilt i 10 min, nulstilles pausen.
 * En bot, hvis dashboard ikke svarer i 5 min, selv om processen lever (den hænger), bliver dræbt og startet igen.
 * Er botterns port stadig optaget af en gammel proces, der er ved at lukke, venter vi i stedet for at fejle.
+* En bot, der kører og svarer, men ikke har scannet markedet i 45 min. (fx fordi den sidder fast i et kald), genstartes.
+  Kender vi ikke botens scanningstid (fx fordi børsen er spærret), genstartes den ikke, for det ville ikke hjælpe.
 * Al output skrives til logs/<bot>.log (roteres ved 5 MB).
 """
 from __future__ import annotations
@@ -19,6 +21,9 @@ BACKOFF_START, BACKOFF_MAX, STABLE_AFTER = 5.0, 300.0, 600.0
 HANG_AFTER = 300.0          # sekunder uden et svar på porten, før en levende proces regnes for hængt
 PORT_WAIT = 150.0           # så længe venter vi på, at en gammel proces slipper porten
 LOG_MAX = 5_000_000
+HEALTH_EVERY = 60.0          # så ofte spørger vi, hvornår botten sidst scannede
+STALL_AFTER = 45 * 60        # så længe uden scanning før en levende bot genstartes
+GRACE = 10 * 60              # en nystartet bot får lov at komme i gang først
 
 
 @dataclass
@@ -37,6 +42,8 @@ class Unit:
     restarts: int = 0
     port_wait_since: float | None = None
     log_file: object = field(default=None, repr=False)
+    health: object = field(default=None, repr=False)      # () -> sekunder siden seneste scanning (eller None)
+    next_health: float = 0.0
 
 
 class Supervisor:
@@ -98,6 +105,16 @@ class Supervisor:
                 elif t - u.last_ok > HANG_AFTER:
                     self.say(f"✗ {u.name} svarer ikke på port {u.port} i {HANG_AFTER:.0f} s – dræber og starter igen")
                     self._kill(u)
+                    continue
+                if u.health and t >= u.next_health and t - u.started > GRACE:      # … og scanner den stadig?
+                    u.next_health = t + HEALTH_EVERY
+                    try:
+                        age = u.health()
+                    except Exception:
+                        age = None
+                    if age is not None and age > STALL_AFTER:
+                        self.say(f"✗ {u.name} har ikke scannet i {age / 60:.0f} min – dræber og starter igen")
+                        self._kill(u)
 
     def _kill(self, u: Unit) -> None:
         if u.proc and u.proc.poll() is None:
