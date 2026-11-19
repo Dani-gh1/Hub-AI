@@ -55,8 +55,9 @@ class Unit:
 
 
 class Supervisor:
-    def __init__(self, units: list[Unit], logdir: Path, port_open, popen=subprocess.Popen, now=time.monotonic, say=print):
+    def __init__(self, units: list[Unit], logdir: Path, port_open, popen=subprocess.Popen, now=time.monotonic, say=print, stagger: float = 0.0):
         self.units, self.logdir, self.port_open, self.popen, self.now, self.say = units, logdir, port_open, popen, now, say
+        self.stagger, self.next_slot = stagger, 0.0       # start botterne et ad gangen, så en lille maskine ikke drukner
         self.stop = threading.Event()
         self.thread: threading.Thread | None = None
 
@@ -88,7 +89,7 @@ class Supervisor:
         t = self.now()
         for u in self.units:
             if u.proc is None:
-                if t < u.next_start:
+                if t < u.next_start or t < self.next_slot:
                     continue
                 if u.port and self.port_open(u.port):                      # gammel proces holder stadig porten
                     u.port_wait_since = u.port_wait_since or t
@@ -97,6 +98,7 @@ class Supervisor:
                         continue
                     self.say(f"! {u.name}: port {u.port} er stadig optaget efter {PORT_WAIT:.0f} s – starter alligevel")
                 self._start(u)
+                self.next_slot = t + self.stagger
                 self.say(f"▶ {u.name} startet" + (f" (genstart nr. {u.restarts})" if u.restarts else ""))
                 continue
             code = u.proc.poll()

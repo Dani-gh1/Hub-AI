@@ -55,13 +55,17 @@ def update_bots(bots: list[dict], bot_dir, say=print, quiet_same: bool = False, 
         from .backup import backup_bots
         backup_bots({b["key"]: bot_dir(b) for b in bots if not (b.get("disabled") or b.get("external") or not b.get("repo")) and bot_dir(b).exists()},
                     backup_root, say)
+    done: dict[Path, tuple[str, str]] = {}          # botter, der deler kode, opdaterer den kun én gang
     for b in bots:
         if b.get("disabled") or b.get("external") or not b.get("repo"):
             continue
         d = bot_dir(b)
         if not d.exists():
             continue
-        status, text = update_dir(d)
+        if d in done:
+            out[b["key"]] = done[d][0]
+            continue
+        status, text = done[d] = update_dir(d)
         out[b["key"]] = status
         if status == "holdt":
             say(f"⏸ {b['name']}: {text}. Kører videre med nuværende kode. (Vil du alligevel: HUB_ALLOW_RESET=1)")

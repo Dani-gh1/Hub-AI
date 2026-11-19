@@ -41,7 +41,11 @@ def backup_bots(dirs: dict[str, Path], root: Path, say=print, force: bool = Fals
         return None
     stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(now()))
     out, made = base / stamp, 0
+    seen: set[Path] = set()
     for key, d in dirs.items():
+        if d.resolve() in seen:          # botter, der deler kode, deler også mappe: pak den kun én gang
+            continue
+        seen.add(d.resolve())
         try:
             files = data_files(d)
             if not files:

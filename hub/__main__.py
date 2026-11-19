@@ -164,7 +164,7 @@ def cmd_run(bots, host: str, port: int) -> None:
                               health=(lambda b=b: scan_age(b)) if i == 0 else None, env=env or None,
                               heal=lambda n, b=b, d=d, i=i: heal(b["key"], d, ROOT, logdir / f"{b['key']}{'' if i == 0 else '-motor'}.log", n),
                               on_stable=lambda d=d: mark_good(d)))
-    sup = Supervisor(units, logdir, port_open)
+    sup = Supervisor(units, logdir, port_open, stagger=float(os.environ.get("HUB_START_STAGGER", "6")))
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     sup.start_thread()                       # botterne starter i baggrunden, så hubben svarer med det samme
     try:

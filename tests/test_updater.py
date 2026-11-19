@@ -99,3 +99,15 @@ class UpdaterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SharedRepoTests(unittest.TestCase):
+    def test_bots_sharing_code_update_it_once(self):
+        from unittest import mock
+        from pathlib import Path
+        from hub import updater
+        bots = [{"key": k, "name": k, "repo": "o/Shared"} for k in ("a", "b", "c")]
+        with mock.patch.object(updater, "update_dir", return_value=("ens", "x")) as m, mock.patch.object(Path, "exists", return_value=True):
+            out = updater.update_bots(bots, lambda b: Path("/x/Shared"), say=lambda *_: None)
+        self.assertEqual(m.call_count, 1)
+        self.assertEqual(out, {"a": "ens", "b": "ens", "c": "ens"})
