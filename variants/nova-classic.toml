@@ -1,7 +1,7 @@
 # Nova Classic: samme Nova-motor, men på etablerede memecoins i stedet for nye lanceringer.
 # Egen mappe til data, så den ikke blander sig med Nova (runs/).
 data_dir = "runs-classic"
-scan_interval_seconds = 60
+scan_interval_seconds = 120     # gamle coins bevæger sig langsommere; skåner en lille server
 
 [scout]
 min_pair_age_minutes = 43200      # mindst 30 dage gammel

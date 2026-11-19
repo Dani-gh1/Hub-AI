@@ -44,7 +44,7 @@ class EveryVariantTests(unittest.TestCase):
             if "overrides" not in b.get("launch", {}) or not b.get("repo") or not bot_dir(b).exists():
                 continue
             cmd, env = commands(b)[0]
-            code = cmd[2].split("sys.argv")[0] + "print('ok')"
+            code = cmd[cmd.index("-c") + 1].split("sys.argv")[0] + "print('ok')"
             r = subprocess.run([sys.executable, "-c", code], cwd=bot_dir(b), capture_output=True, text=True, env={**os.environ, **env}, timeout=60)
             self.assertEqual(r.stdout.strip(), "ok", f"{b['key']}: {r.stderr[-300:]}")
             checked += 1
@@ -60,6 +60,22 @@ class EveryVariantTests(unittest.TestCase):
             for f in filter(None, files):
                 self.assertNotIn((b["repo"], f), seen, f"{b['key']} deler fil med {seen.get((b['repo'], f))}")
                 seen[(b["repo"], f)] = b["key"]
+
+
+class LiteTests(unittest.TestCase):
+    def test_lite_mode_scans_less_often_and_new_bots_run_with_low_priority(self):
+        import os
+        by = {b["key"]: b for b in load_bots()}
+        os.environ["HUB_LITE"] = "1"
+        try:
+            lite = commands(by["bondai"])[0][0]
+        finally:
+            del os.environ["HUB_LITE"]
+        normal = commands(by["bondai"])[0][0]
+        self.assertEqual(lite[:3], ["nice", "-n", "10"])
+        self.assertIn("'SCAN_INTERVAL_MINUTES': 30", lite[-1])
+        self.assertNotIn("SCAN_INTERVAL_MINUTES", normal[-1])
+        self.assertNotEqual(commands(by["atlas"])[0][0][0], "nice")         # de oprindelige botter får fuld prioritet
 
 
 if __name__ == "__main__":

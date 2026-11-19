@@ -10,7 +10,9 @@ doctor tester botternes datakilder og forklarer, hvis noget er spærret eller ov
 from __future__ import annotations
 
 import argparse
+import copy
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -70,10 +72,22 @@ ONLY_BASES = (
 
 
 def commands(bot: dict) -> list[tuple[list[str], dict]]:
+    """Som _commands, men botter med "nice" kører med lavere prioritet, så de originale botter, hubben og ssh altid får CPU først."""
+    out = _commands(bot)
+    n = bot.get("nice")
+    if n and shutil.which("nice"):
+        out = [(["nice", "-n", str(int(n)), *cmd], env) for cmd, env in out]
+    return out
+
+
+def _commands(bot: dict) -> list[tuple[list[str], dict]]:
     """Kommandoer (og ekstra miljøvariabler) der starter botten med dashboard kun på 127.0.0.1:<port>.
     Nogle botter bruger to processer (dashboard og motor). Flere botter kan dele samme kode (repo) og kun adskille sig ved
     egne indstillinger: "overrides" ({modul: {indstilling: værdi}}) ændrer botens config, før den starter, og "env" giver den egne filer."""
-    ln, port = bot["launch"], bot["port"]
+    ln, port = copy.deepcopy(bot["launch"]), bot["port"]
+    if os.environ.get("HUB_LITE") == "1" and bot.get("lite"):      # lille maskine: botten scanner sjældnere (samler stadig data)
+        for mod, attrs in bot["lite"].items():
+            ln.setdefault("overrides", {}).setdefault(mod, {}).update(attrs)
     fmt = lambda v: str(v).format(port=port, root=ROOT)
     env = {k: fmt(v) for k, v in ln.get("env", {}).items()}
     if ln["kind"] == "flag":

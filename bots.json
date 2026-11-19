@@ -277,6 +277,12 @@
    "costs": {
     "fee_pct": 0.15,
     "slip_pct": 0.1
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -349,6 +355,12 @@
    "costs": {
     "fee_pct": 0.1,
     "slip_pct": 0.2
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_SECONDS": 900
+    }
    }
   },
   {
@@ -381,7 +393,8 @@
    "costs": {
     "fee_pct": 0.3,
     "slip_pct": 0.5
-   }
+   },
+   "nice": 10
   },
   {
    "key": "bondai",
@@ -450,6 +463,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.05
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -509,6 +528,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.1
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -566,6 +591,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.08
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -634,6 +665,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.1
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -694,6 +731,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.2
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -756,6 +799,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.05
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -807,6 +856,12 @@
    "costs": {
     "fee_pct": 0.2,
     "slip_pct": 0.6
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -860,6 +915,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.1
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_MINUTES": 30
+    }
    }
   },
   {
@@ -921,6 +982,12 @@
    "costs": {
     "fee_pct": 0.1,
     "slip_pct": 0.1
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_SECONDS": 900
+    }
    }
   },
   {
@@ -982,6 +1049,12 @@
    "costs": {
     "fee_pct": 0.1,
     "slip_pct": 0.15
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_SECONDS": 900
+    }
    }
   },
   {
@@ -1037,6 +1110,12 @@
    "costs": {
     "fee_pct": 0.1,
     "slip_pct": 0.2
+   },
+   "nice": 10,
+   "lite": {
+    "config": {
+     "SCAN_INTERVAL_SECONDS": 900
+    }
    }
   },
   {
@@ -1253,6 +1332,12 @@
    "costs": {
     "fee_pct": 0.0,
     "slip_pct": 0.04
+   },
+   "nice": 10,
+   "lite": {
+    "desk.config": {
+     "LOOP_SECONDS": 180
+    }
    }
   }
  ]
