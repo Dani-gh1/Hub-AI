@@ -74,7 +74,7 @@ else
 fi
 
 step "5/8 Tænder alle 22 botter på den nye server"
-SEDX=""; for k in $NEW_BOTS; do SEDX="$SEDX -e '/^HUB_DISABLE_$k=/d'"; done
+SEDX="-e '/^HUB_LITE=/d'"; for k in $NEW_BOTS; do SEDX="$SEDX -e '/^HUB_DISABLE_$k=/d'"; done      # fuld fart på den store server
 on "$NEW" "sudo sed -i $SEDX /etc/hub.env && echo '✓ de 15 nye botter er slået til'"
 
 step "6/8 Starter Nova og installerer hubben"

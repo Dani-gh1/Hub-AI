@@ -19,6 +19,7 @@ class MigrateTests(unittest.TestCase):
         self.assertIn("--exclude='home/ubuntu/Hub-AI/backups'", out)
         for k in ("ATLASGLOBAL", "VALUTAAI", "REGNSKABAI"):
             self.assertIn(f"/^HUB_DISABLE_{k}=/d", out)                # de nye botter slås til på den store server
+        self.assertIn("/^HUB_LITE=/d", out)                               # sparetilstand slås fra på den store server
         self.assertIn("[1.1.1.1] sudo systemctl stop hub-update.timer hub", out)
         self.assertIn("[1.1.1.1] sudo systemctl disable hub", out)    # den gamle må ikke starte igen (to papirkonti)
         self.assertIn("./deploy/install.sh", out)
