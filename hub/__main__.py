@@ -120,6 +120,8 @@ def cmd_run(bots, host: str, port: int) -> None:
     if os.environ.get("HUB_NO_UPDATE") != "1":     # start altid på den nyeste kode (slå fra med HUB_NO_UPDATE=1)
         from .updater import update_bots
         update_bots(bots, bot_dir, quiet_same=True, backup_root=ROOT)
+    from .heal import heal, mark_good
+    logdir = Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs"))
     units = []
     for b in bots:
         d = bot_dir(b)
@@ -135,8 +137,10 @@ def cmd_run(bots, host: str, port: int) -> None:
         for i, (cmd, env) in enumerate(commands(b)):
             units.append(Unit(b["key"], b["name"] if i == 0 else f"{b['name']} (motor)", cmd, d, b["port"] if i == 0 else None,
                               None if i == 0 else f"{b['key']}-motor",
-                              health=(lambda b=b: scan_age(b)) if i == 0 else None, env=env or None))
-    sup = Supervisor(units, Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs")), port_open)
+                              health=(lambda b=b: scan_age(b)) if i == 0 else None, env=env or None,
+                              heal=lambda n, b=b, d=d, i=i: heal(b["key"], d, ROOT, logdir / f"{b['key']}{'' if i == 0 else '-motor'}.log", n),
+                              on_stable=lambda d=d: mark_good(d)))
+    sup = Supervisor(units, logdir, port_open)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     sup.start_thread()                       # botterne starter i baggrunden, så hubben svarer med det samme
     try:

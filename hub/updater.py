@@ -34,6 +34,11 @@ def update_dir(d: Path) -> tuple[str, str]:
                 hit = resets_stats(d)
                 if hit:
                     return "holdt", f"opdateringen ville nulstille statistikken ({hit}) – ikke hentet"
+        hold = d / ".git" / "hub-hold"                                 # en version, der fik botten til at gå ned, hentes ikke igen
+        if hold.exists() and _git(d, "fetch", "-q").returncode == 0:
+            if _git(d, "rev-parse", "FETCH_HEAD").stdout.strip() == hold.read_text().strip():
+                return "holdt", "den nyeste version fik botten til at gå ned – holdt tilbage, til der kommer en ny"
+            hold.unlink(missing_ok=True)
         pull = _git(d, "pull", "--ff-only", "-q")
         if pull.returncode != 0:
             return "fejl", (pull.stderr.strip().splitlines() or ["git pull fejlede"])[-1][:140]

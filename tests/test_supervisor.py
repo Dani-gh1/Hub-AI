@@ -165,6 +165,28 @@ class SupervisorTests(unittest.TestCase):
         self.assertTrue((Path(r.dir.name) / "logs" / "a.log").read_text().startswith("\n--- start"))
         r.dir.cleanup()
 
+    def test_a_bot_that_keeps_crashing_gets_healed_and_the_counter_resets_when_it_runs_stable(self):
+        r = Rig(); calls = []
+        r.unit.heal = lambda n: calls.append(n) or "rettet"
+        r.sup.tick()
+        for _ in range(6):
+            r.procs[-1].code = 1
+            r.sup.tick()                       # opdager nedbruddet
+            r.advance(400)                     # pause, og så startes den igen
+        self.assertEqual(calls, [1, 2])        # efter 3. og 6. hurtige nedbrud
+        self.assertTrue(any("🔧" in m for m in r.msgs))
+        r.open = True
+        r.advance(700)                         # kører stabilt i 10+ min
+        r.procs[-1].code = 1; r.sup.tick()
+        self.assertEqual((r.unit.fast_fails, r.unit.heals), (0, 0))
+
+    def test_on_stable_is_called_once_after_ten_minutes(self):
+        r = Rig(); n = []
+        r.unit.on_stable = lambda: n.append(1)
+        r.sup.tick(); r.open = True
+        r.advance(300); self.assertEqual(n, [])
+        r.advance(400); r.advance(60); self.assertEqual(n, [1])
+
 
 if __name__ == "__main__":
     unittest.main()

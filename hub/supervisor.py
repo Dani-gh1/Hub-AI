@@ -23,6 +23,8 @@ PORT_WAIT = 150.0           # så længe venter vi på, at en gammel proces slip
 LOG_MAX = 5_000_000
 HEALTH_EVERY = 60.0          # så ofte spørger vi, hvornår botten sidst scannede
 STALL_AFTER = 45 * 60        # så længe uden scanning før en levende bot genstartes
+FAST_FAIL = 120.0            # en bot, der stopper inden for så lang tid, regnes for et hurtigt nedbrud
+HEAL_EVERY = 3               # efter så mange hurtige nedbrud i træk forsøger hubben at rette årsagen
 GRACE = 10 * 60              # en nystartet bot får lov at komme i gang først
 
 
@@ -45,6 +47,11 @@ class Unit:
     health: object = field(default=None, repr=False)      # () -> sekunder siden seneste scanning (eller None)
     next_health: float = 0.0
     env: dict | None = field(default=None, repr=False)      # ekstra miljøvariabler til denne bot
+    heal: object = field(default=None, repr=False)          # (forsøg) -> tekst: prøver at rette årsagen til gentagne nedbrud
+    on_stable: object = field(default=None, repr=False)     # () -> None: kaldes, når botten har kørt stabilt
+    fast_fails: int = 0
+    heals: int = 0
+    marked_good: bool = False
 
 
 class Supervisor:
@@ -96,11 +103,26 @@ class Supervisor:
             if code is not None:                                            # processen er død
                 up = t - u.started
                 if up >= STABLE_AFTER:
-                    u.backoff = BACKOFF_START
+                    u.backoff, u.fast_fails, u.heals = BACKOFF_START, 0, 0
+                elif up < FAST_FAIL:
+                    u.fast_fails += 1
+                u.marked_good = False
                 wait, u.backoff = u.backoff, min(u.backoff * 2, BACKOFF_MAX)     # 5 s, 10 s, 20 s … højst 5 min
                 u.proc, u.restarts, u.next_start = None, u.restarts + 1, t + wait
                 self.say(f"✗ {u.name} stoppede (kode {code}) efter {up:.0f} s – starter igen om {wait:.0f} s")
+                if u.heal and u.fast_fails and u.fast_fails % HEAL_EVERY == 0:      # bliver ved med at gå ned: ret årsagen
+                    u.heals += 1
+                    try:
+                        self.say(f"🔧 {u.name} går ned igen og igen – prøver at rette det: {u.heal(u.heals)}")
+                    except Exception as e:
+                        self.say(f"! selvreparation af {u.name} fejlede: {type(e).__name__}: {e}")
                 continue
+            if u.on_stable and not u.marked_good and t - u.started >= STABLE_AFTER:
+                u.marked_good = True
+                try:
+                    u.on_stable()
+                except Exception:
+                    pass
             if u.port:                                                      # processen lever: svarer dashboardet?
                 if self.port_open(u.port):
                     u.last_ok = t
