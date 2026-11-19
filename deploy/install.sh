@@ -52,10 +52,23 @@ if [ "$OS" = Darwin ]; then
   plist ai.hub.dashboard '<key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ThrottleInterval</key><integer>5</integer>' /bin/bash "$HUB_DIR/deploy/run-mac.sh"
   plist ai.hub.update '<key>RunAtLoad</key><false/><key>StartInterval</key><integer>900</integer>' /bin/bash "$HUB_DIR/deploy/update.sh"
   if [ "$DRY" = 1 ]; then echo "(tør kørsel: launchd røres ikke)"; exit 0; fi
+  FAILED=""
   for l in ai.hub.dashboard ai.hub.update; do
+    if command -v plutil >/dev/null 2>&1 && ! plutil -lint "$LA/$l.plist" >/dev/null 2>&1; then echo "✗ $l.plist er ikke en gyldig fil: $(plutil -lint "$LA/$l.plist" 2>&1)"; FAILED="$FAILED $l"; continue; fi
     launchctl bootout "gui/$(id -u)/$l" 2>/dev/null || true
-    launchctl bootstrap "gui/$(id -u)" "$LA/$l.plist"
+    if ! ERR="$(launchctl bootstrap "gui/$(id -u)" "$LA/$l.plist" 2>&1)"; then
+      echo "! launchctl bootstrap fejlede for $l: ${ERR:-ingen fejltekst}"
+      echo "  Prøver den ældre metode (launchctl load) …"
+      launchctl unload "$LA/$l.plist" 2>/dev/null || true
+      if ! ERR2="$(launchctl load -w "$LA/$l.plist" 2>&1)"; then echo "✗ $l kunne ikke indlæses: ${ERR2:-ingen fejltekst}"; FAILED="$FAILED $l"; continue; fi
+    fi
+    launchctl print "gui/$(id -u)/$l" >/dev/null 2>&1 || { echo "✗ $l blev ikke indlæst, selv om launchctl ikke gav en fejl"; FAILED="$FAILED $l"; }
   done
+  if [ -n "$FAILED" ]; then
+    echo; echo "Autostart kunne ikke sættes op for:$FAILED. Hubben virker stadig. Start den selv i et Terminal-vindue (lad det stå åbent):"
+    echo "    $HUB_DIR/deploy/run-mac.sh"
+    echo "Send mig fejlteksten ovenfor, så retter jeg autostart."; exit 1
+  fi
   PORT="$(grep '^HUB_PORT=' "$ENV_FILE" | cut -d= -f2)"
   for _ in $(seq 1 30); do curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break; sleep 1; done
   curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && echo "✓ hub kører" || { echo "✗ hubben svarer ikke endnu: se $HUB_DIR/logs/ai.hub.dashboard.log"; exit 1; }

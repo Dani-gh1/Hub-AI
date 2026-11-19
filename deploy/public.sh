@@ -18,9 +18,19 @@ TS="${HUB_TAILSCALE:-$(command -v tailscale || true)}"
 
 getvar() { grep "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- || true; }
 setvar() { local tmp; tmp="$(mktemp)"; { grep -v "^$1=" "$ENV_FILE" || true; echo "$1=$2"; } > "$tmp"; $SUDO sh -c "cat '$tmp' > '$ENV_FILE'"; rm -f "$tmp"; }
+service_loaded() {
+  if [ "$OS" = Darwin ]; then launchctl print "gui/$(id -u)/ai.hub.dashboard" >/dev/null 2>&1; else systemctl is-active --quiet hub 2>/dev/null; fi
+}
+RESTARTED=0
 restart() {
   [ "$DRY" = 1 ] && return 0
-  if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard"; else sudo systemctl restart hub; fi
+  if service_loaded; then
+    if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else sudo systemctl restart hub || true; fi
+    RESTARTED=1
+  else
+    echo "• Hubben kører ikke som tjeneste her (autostart er ikke sat op). Indstillingen er gemt og bruges, næste gang hubben startes:"
+    if [ "$OS" = Darwin ]; then echo "    ./deploy/run-mac.sh        (lad Terminal-vinduet stå åbent)"; else echo "    sudo systemctl start hub"; fi
+  fi
 }
 PORT="$(getvar HUB_PORT)"; PORT="${PORT:-8080}"
 url_of() { grep -oE 'https://[A-Za-z0-9.-]+\.ts\.net[^ ]*' | head -1 || true; }
@@ -29,7 +39,7 @@ serve_url() { "$TS" serve status 2>/dev/null | url_of; }
 
 need_login() { "$TS" status >/dev/null 2>&1 || { echo "Tailscale er ikke logget ind. Kør: $TS up"; exit 1; }; }
 save_host() { [ -n "$(getvar HUB_HOST_BEFORE_PUBLIC)" ] || setvar HUB_HOST_BEFORE_PUBLIC "$(getvar HUB_HOST)"; setvar HUB_HOST 127.0.0.1; }   # hubben åbner kun lokalt
-wait_hub() { [ "$DRY" = 1 ] || for _ in $(seq 1 30); do curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break; sleep 1; done; }
+wait_hub() { { [ "$DRY" = 1 ] || [ "$RESTARTED" = 0 ]; } || for _ in $(seq 1 30); do curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break; sleep 1; done; }
 tailscale_help() {
   echo "✗ Tailscale kunne ikke slå det til:"; echo "$1" | sed 's/^/    /'
   echo; echo "Det skal tillades én gang i din Tailscale-konto:"
