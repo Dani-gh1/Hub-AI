@@ -10,6 +10,7 @@ import socket
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
@@ -120,6 +121,55 @@ def last_problem(bot: dict) -> str:
             if re.search(r"Error|Exception|fejlede|svarer ikke|spærret|Traceback", line) and 'File "' not in line:
                 return line.strip()[-170:]
     return ""
+
+
+COST_DEFAULTS = {"enabled": False, "capital": 10000.0, "currency": "kr.", "fee_pct": 0.1, "slip_pct": 0.05,
+                 "fixed_fee": 0.0, "pos_pct": 10.0, "tax_pct": 0.0}
+COST_LIMITS = {"capital": (0, 1e9), "fee_pct": (0, 20), "slip_pct": (0, 20), "fixed_fee": (0, 1e6), "pos_pct": (0.1, 100), "tax_pct": (0, 100)}
+COST_LOCK = threading.Lock()
+
+
+def costs_file() -> Path:
+    return Path(os.environ.get("HUB_COSTS_FILE") or ROOT / "logs" / "costs.json")
+
+
+def clean_costs(raw) -> dict:
+    """Gyldige indstillinger ud fra vilkårligt input: ukendte felter droppes, tal begrænses, tekst kortes."""
+    raw = raw if isinstance(raw, dict) else {}
+    out = dict(COST_DEFAULTS)
+    out["enabled"] = bool(raw.get("enabled", out["enabled"]))
+    cur = raw.get("currency")
+    if isinstance(cur, str) and cur.strip():
+        out["currency"] = re.sub(r"[<>&\"']", "", cur.strip())[:6] or out["currency"]
+    for k, (lo, hi) in COST_LIMITS.items():
+        v = raw.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and abs(v) != float("inf"):
+            out[k] = round(min(hi, max(lo, float(v))), 4)
+    return out
+
+
+def load_costs() -> dict:
+    try:
+        data = json.loads(costs_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    return data if isinstance(data, dict) else {}
+
+
+def get_costs(key: str) -> dict:
+    return clean_costs(load_costs().get(key))
+
+
+def save_costs(key: str, raw) -> dict:
+    with COST_LOCK:
+        data = load_costs()
+        data[key] = clean_costs(raw)
+        f = costs_file()
+        f.parent.mkdir(parents=True, exist_ok=True)
+        tmp = f.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data), encoding="utf-8")
+        tmp.replace(f)
+        return data[key]
 
 
 STALE_AFTER_S = 20 * 60          # så længe uden scanning før overblikket advarer
@@ -323,6 +373,55 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 return False
             return hmac.compare_digest(given.encode("utf-8"), password.encode("utf-8"))     # bytes: tekst med æøå kan ikke sammenlignes direkte
 
+        def _gate(self) -> bool:
+            """Hastighedsgrænse, spærring og adgangskode. Sender selv svaret og returnerer False, hvis forespørgslen afvises."""
+            ip = client_ip(self.client_address[0], self.headers.get("X-Forwarded-For"))
+            if ratelimit is not None:
+                slow = ratelimit.allow(ip)
+                if slow:
+                    self._send(429, "text/plain; charset=utf-8", "For mange forespørgsler. Vent lidt.".encode(), {"Retry-After": str(int(slow) + 1)})
+                    return False
+            wait = throttle.locked(ip) if password else 0
+            if wait:
+                self._send(429, "text/plain; charset=utf-8", "For mange forkerte forsøg. Prøv igen om lidt.".encode(),
+                           {"Retry-After": str(int(wait) + 1)})
+                return False
+            if not self._authorized():
+                if self.headers.get("Authorization"):          # et forsøg med forkert kode tæller; første kald uden kode gør ikke
+                    throttle.failed(ip)
+                self._send(401, "text/plain", b"login", {"WWW-Authenticate": 'Basic realm="hub"'})
+                return False
+            if password and self.headers.get("Authorization"):
+                throttle.ok(ip)
+            return True
+
+        def do_POST(self):  # noqa: N802
+            """Eneste skrivning: gemmer en bots omkostningsindstillinger (/api/costs/<bot>). Kræver samme login som resten."""
+            path = self.path.partition("?")[0]
+            if not self._gate():
+                return
+            try:
+                m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
+                if not m or m.group(1) not in by_key:
+                    return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
+                origin = self.headers.get("Origin")
+                if origin and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):      # kun fra dashboardet selv
+                    return self._send(403, "text/plain; charset=utf-8", "forkert oprindelse".encode())
+                if "application/json" not in self.headers.get("Content-Type", ""):
+                    return self._send(415, "text/plain; charset=utf-8", b"kun JSON")
+                n = int(self.headers.get("Content-Length") or 0)
+                if not 0 < n <= 4096:
+                    return self._send(413, "text/plain; charset=utf-8", "forkert størrelse".encode())
+                try:
+                    raw = json.loads(self.rfile.read(n).decode("utf-8"))
+                except ValueError:
+                    return self._send(400, "text/plain; charset=utf-8", "ugyldig JSON".encode())
+                self._send(200, "application/json", json.dumps(save_costs(m.group(1), raw)).encode())
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            except Exception:
+                self._send(500, "application/json", b'{"error": "internal error"}')
+
         def do_GET(self):  # noqa: N802
             path, _, query = self.path.partition("?")
             if path == "/healthz":
@@ -333,21 +432,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 if re.fullmatch(r"[A-Za-z0-9._-]+", name) and f.suffix in STATIC_TYPES and f.is_file():
                     return self._send(200, STATIC_TYPES[f.suffix], f.read_bytes(), {"Cache-Control": "public, max-age=86400"})
                 return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
-            ip = client_ip(self.client_address[0], self.headers.get("X-Forwarded-For"))
-            if ratelimit is not None:
-                slow = ratelimit.allow(ip)
-                if slow:
-                    return self._send(429, "text/plain; charset=utf-8", "For mange forespørgsler. Vent lidt.".encode(), {"Retry-After": str(int(slow) + 1)})
-            wait = throttle.locked(ip) if password else 0
-            if wait:
-                return self._send(429, "text/plain; charset=utf-8", "For mange forkerte forsøg. Prøv igen om lidt.".encode(),
-                                  {"Retry-After": str(int(wait) + 1)})
-            if not self._authorized():
-                if self.headers.get("Authorization"):          # et forsøg med forkert kode tæller; første kald uden kode gør ikke
-                    throttle.failed(ip)
-                return self._send(401, "text/plain", b"login", {"WWW-Authenticate": 'Basic realm="hub"'})
-            if password and self.headers.get("Authorization"):
-                throttle.ok(ip)
+            if not self._gate():
+                return
             try:
                 if path in ("/", "/index.html"):
                     return self._send(200, "text/html; charset=utf-8", SHELL.read_bytes())
@@ -363,6 +449,9 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
                         out = list(ex.map(bot_overview, bots))
                     return self._send(200, "application/json", json.dumps(out).encode())
+                m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
+                if m and m.group(1) in by_key:
+                    return self._send(200, "application/json", json.dumps(get_costs(m.group(1))).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     try:

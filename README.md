@@ -33,6 +33,13 @@ python3 -m hub run
 Åbn <http://127.0.0.1:8080>. `fetch` henter botterne ind i `bots/`, `run` starter dem (hver på sin egen port, kun lokalt)
 og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ standardbibliotek.
 
+## Rigtige penge og omkostninger
+
+Hver bot har en knap **💰 Rigtige penge** øverst. Her skriver du din kapital, gebyr og spread/slip pr. side, evt. et fast gebyr,
+hvor stor en del af kontoen hver handel fylder, og skat af gevinst. Slås det til, vises afkast **efter omkostninger** (graf, tabel
+og strategikort, også i kroner). Papirhandlen ændres ikke. Tallet er et skøn: hver lukket handel trækkes ind og ud, en åben kun indgangen.
+Indstillingerne gemmes på hubben i `logs/costs.json` (kræver samme login som resten).
+
 ## Alle botter
 
 Første fane er **Overblik** for alle botter: en tabel over, om de kører, og en tabel med hver bots bedste strategi.
