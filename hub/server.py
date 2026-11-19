@@ -23,14 +23,25 @@ STATIC_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "a
 
 
 def load_bots(path: Path | None = None) -> list[dict]:
-    """Læser bots.json. HUB_EXTERNAL_<BOT>=<port> betyder, at botten allerede kører som egen service på den port
-    (fx Nova på serveren): hubben viser den, men starter ingen ekstra kopi."""
+    """Læser bots.json. Miljøvariabler kan ændre en bot:
+    HUB_EXTERNAL_<BOT>=<port> eller =<vært>:<port>  botten kører allerede som egen service (fx Nova på serveren):
+                                                    hubben viser den, men starter ingen ekstra kopi
+    HUB_DISABLE_<BOT>=1                             slå botten fra på denne maskine (fx Nova på en Mac)"""
     bots = json.loads((path or ROOT / "bots.json").read_text(encoding="utf-8"))["bots"]
     for b in bots:
-        ext = os.environ.get(f"HUB_EXTERNAL_{b['key'].upper()}")
-        if ext and ext.isdigit():
-            b["port"], b["external"] = int(ext), True
+        key = b["key"].upper()
+        m = re.fullmatch(r"(?:([A-Za-z0-9.-]+):)?(\d{1,5})", os.environ.get(f"HUB_EXTERNAL_{key}", ""))
+        if m:
+            b["external"], b["port"] = True, int(m.group(2))
+            if m.group(1):
+                b["host"] = m.group(1)
+        elif os.environ.get(f"HUB_DISABLE_{key}") == "1":
+            b["disabled"], b["note"] = True, "Slået fra på denne maskine."
     return bots
+
+
+def bot_host(bot: dict) -> str:
+    return bot.get("host", "127.0.0.1")
 
 
 def port_open(port: int, host: str = "127.0.0.1") -> bool:
@@ -57,7 +68,7 @@ def inject(html: bytes, key: str, hide: str) -> bytes:
 
 def upstream(bot: dict, sub: str, query: str = "", timeout: float = 15):
     """GET mod botens eget dashboard. Returnerer (statuskode, content-type, body); kaster OSError hvis den ikke svarer."""
-    url = f"http://127.0.0.1:{bot['port']}{sub}" + (f"?{query}" if query else "")
+    url = f"http://{bot_host(bot)}:{bot['port']}{sub}" + (f"?{query}" if query else "")
     req = urllib.request.Request(url)
     auth = os.environ.get(f"HUB_UPSTREAM_AUTH_{bot['key'].upper()}")   # fx "user:kode" til Delphis dashboard
     if auth:
@@ -93,7 +104,8 @@ def best_of(strategies: list[dict]) -> dict | None:
 
 def bot_overview(bot: dict) -> dict:
     out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
-           "configured": bool(bot.get("repo")), "up": port_open(bot["port"]), "mode": "live", "best": None}
+           "configured": bool(bot.get("repo")) and not bot.get("disabled"), "note": bot.get("note", ""),
+           "up": not bot.get("disabled") and port_open(bot["port"], bot_host(bot)), "mode": "live", "best": None}
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
@@ -150,7 +162,8 @@ def make_handler(bots: list[dict]):
                 if path == "/api/bots":
                     out = [{"key": b["key"], "name": b["name"], "desc": b.get("desc", ""),
                             "short": b.get("short", ""),
-                            "configured": bool(b.get("repo")), "up": port_open(b["port"])} for b in bots]
+                            "configured": bool(b.get("repo")) and not b.get("disabled"), "note": b.get("note", ""),
+                            "up": not b.get("disabled") and port_open(b["port"], bot_host(b))} for b in bots]
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:

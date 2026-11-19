@@ -265,6 +265,7 @@ function render(keepScroll) {
   if (curKey === OV) { load(true); return; }
   const b = bot();
   if (!b) { go(OV); return; }
+  if (b.note) return view(h("div", { class: "msg" }, h("h2", {}, b.name), h("p", {}, b.note)));
   if (!b.configured) return view(h("div", { class: "msg" }, h("h2", {}, b.name), h("p", {}, "Koden er ikke koblet på endnu."),
     h("p", {}, "Sæt ", h("code", {}, "repo"), " i ", h("code", {}, "bots.json"), " og kør ", h("code", {}, "python3 -m hub fetch"), ".")));
   if (!b.up) return view(h("div", { class: "msg" }, h("h2", {}, `${b.name} kører ikke`), h("p", {}, "Start den med ", h("code", {}, "python3 -m hub run"), ".")));
@@ -478,7 +479,7 @@ function renderHub(rows) {
       h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", { class: "hide-m" }, "Investerer i"), h("th", {}, "Status"),
         h("th", { class: "n" }, h("span", { class: "hide-m" }, "Strategier i plus"), h("span", { class: "under" }, "I plus")))),
         h("tbody", {}, rows.map((b) => {
-          const text = !b.configured ? "Ikke koblet på" : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : "Kører";
+          const text = !b.configured ? (b.note ? "Slået fra her" : "Ikke koblet på") : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : "Kører";
           return h("tr", {}, h("td", { class: "name" }, link(b), h("span", { class: "under" }, b.invests || "")), h("td", { class: "hide-m" }, b.invests || "–"),
             h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + (!b.configured ? "" : b.up ? "up" : "down") }), text)),
             h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));

@@ -5,8 +5,11 @@
 set -uo pipefail
 
 HUB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RUN_USER="${HUB_USER:-$(stat -c %U "$HUB_DIR")}"
+OS="${HUB_OS:-$(uname -s)}"
 DRY="${HUB_DRY_RUN:-0}"
+if [ "$OS" = Darwin ]; then OWNER="$(stat -f %Su "$HUB_DIR")"; else OWNER="$(stat -c %U "$HUB_DIR")"; fi
+RUN_USER="${HUB_USER:-$OWNER}"
+TO=""; command -v timeout >/dev/null 2>&1 && TO="timeout 180"      # macOS har ikke timeout som standard
 
 as_user() { if [ "$(id -u)" -eq 0 ] && [ "$RUN_USER" != root ]; then runuser -u "$RUN_USER" -- "$@"; else "$@"; fi; }
 say() { echo "[hub-update] $*"; }
@@ -21,7 +24,7 @@ update_dir() {
   else as_user git -C "$d" pull -q --ff-only 2>/dev/null; fi || { say "kunne ikke hente $d (springer over)"; return 0; }
   after="$(as_user git -C "$d" rev-parse HEAD)"
   [ "$before" = "$after" ] && return 0
-  if [ -d "$d/tests" ] && ! (cd "$d" && as_user timeout 180 python3 -m unittest discover -s tests -t . >/dev/null 2>&1); then
+  if [ -d "$d/tests" ] && ! (cd "$d" && as_user $TO python3 -m unittest discover -s tests -t . >/dev/null 2>&1); then
     say "NYE ÆNDRINGER I $d BESTOD IKKE TESTENE – ruller tilbage til ${before:0:8}"
     as_user git -C "$d" reset -q --hard "$before"
     return 2
@@ -30,7 +33,11 @@ update_dir() {
   return 1
 }
 
-restart() { say "genstarter $1"; [ "$DRY" = 1 ] || systemctl restart "$1"; }
+restart() {
+  say "genstarter $1"
+  [ "$DRY" = 1 ] && return 0
+  if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else systemctl restart "$1"; fi
+}
 
 hub_changed=0
 update_dir "$HUB_DIR"; [ $? -eq 1 ] && hub_changed=1

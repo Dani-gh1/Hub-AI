@@ -37,6 +37,24 @@ class HubTests(unittest.TestCase):
                 self.assertTrue(b["launch"])
             self.assertIn(b["adapter"], ADAPTERS)
 
+    def test_bots_can_be_external_on_another_host_or_disabled(self):
+        import os
+        os.environ.update({"HUB_EXTERNAL_NOVA": "100.64.0.9:8787", "HUB_EXTERNAL_ORION": "9999", "HUB_DISABLE_COMET": "1"})
+        try:
+            by = {b["key"]: b for b in load_bots()}
+        finally:
+            for k in ("HUB_EXTERNAL_NOVA", "HUB_EXTERNAL_ORION", "HUB_DISABLE_COMET"):
+                del os.environ[k]
+        self.assertEqual((by["nova"]["host"], by["nova"]["port"], by["nova"]["external"]), ("100.64.0.9", 8787, True))
+        self.assertEqual((by["orion"]["port"], by["orion"].get("host")), (9999, None))
+        self.assertTrue(by["comet"]["disabled"] and by["comet"]["note"])
+        self.assertNotIn("external", by["delphi"])
+        os.environ["HUB_EXTERNAL_NOVA"] = "ikke-et-tal; rm -rf"
+        try:
+            self.assertNotIn("external", {b["key"]: b for b in load_bots()}["nova"])   # ugyldig værdi ignoreres
+        finally:
+            del os.environ["HUB_EXTERNAL_NOVA"]
+
     def test_every_bot_has_label(self):
         for b in load_bots():
             self.assertTrue(b["short"] and b["invests"], b["key"])

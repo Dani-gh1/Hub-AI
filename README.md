@@ -57,7 +57,10 @@ Log ind på serveren med SSH og installér én gang:
 git clone https://github.com/Dani-gh1/Hub-AI.git && cd Hub-AI && ./deploy/install.sh
 ```
 
-Scriptet sætter alt op og skriver adressen og en adgangskode ud til sidst. Derefter gør det selv:
+Scriptet sætter alt op og skriver adressen og en adgangskode ud til sidst. På en **Mac** virker den samme kommando
+(i Terminal, uden sudo): hubben starter ved login via launchd, genstarter sig selv og holder Macen vågen, mens låget er åbent.
+Nova slås fra på en Mac, så der ikke opstår en anden papirkonto; sæt `HUB_EXTERNAL_NOVA=<serverens adresse>:8787` i
+`~/Library/Application Support/Hub AI/hub.env` for at se serverens Nova. På serveren gør den selv:
 
 * **Starter ved boot** og genstarter sig selv, hvis hubben går ned (systemd, `Restart=always`).
 * **Vagthund:** en bot, der går ned, startes igen efter 5 sekunder (pausen vokser, hvis den bliver ved, højst 5 min.).

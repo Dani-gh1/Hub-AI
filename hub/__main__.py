@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .server import ROOT, load_bots, port_open, serve
+from .server import ROOT, bot_host, load_bots, port_open, serve
 
 BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
 
@@ -45,8 +45,8 @@ def commands(bot: dict) -> list[list[str]]:
 def cmd_fetch(bots) -> None:
     BOTS_DIR.mkdir(parents=True, exist_ok=True)
     for b in bots:
-        if b.get("external"):
-            print(f"· {b['name']}: kører som egen service, hentes ikke")
+        if b.get("disabled") or b.get("external"):
+            print(f"· {b['name']}: hentes ikke på denne maskine")
         elif not b.get("repo"):
             print(f"- {b['name']}: ingen repo sat i bots.json endnu")
         elif bot_dir(b).exists():
@@ -58,8 +58,8 @@ def cmd_fetch(bots) -> None:
 
 def cmd_status(bots) -> None:
     for b in bots:
-        inst = "ekstern" if b.get("external") else "installeret" if b.get("repo") and bot_dir(b).exists() else "mangler"
-        run = "kører" if port_open(b["port"]) else "kører ikke"
+        inst = "slået fra" if b.get("disabled") else "ekstern" if b.get("external") else "installeret" if b.get("repo") and bot_dir(b).exists() else "mangler"
+        run = "kører" if port_open(b["port"], bot_host(b)) else "kører ikke"
         print(f"{b['name']:<12} {inst:<12} {run:<11} port {b['port']}")
 
 
@@ -68,8 +68,11 @@ def cmd_run(bots, host: str, port: int) -> None:
     units = []
     for b in bots:
         d = bot_dir(b)
+        if b.get("disabled"):
+            print(f"· {b['name']}: slået fra på denne maskine")
+            continue
         if b.get("external"):
-            print(f"· {b['name']}: kører allerede som egen service på port {b['port']} – starter ingen kopi")
+            print(f"· {b['name']}: kører allerede som egen service ({bot_host(b)}:{b['port']}) – starter ingen kopi")
             continue
         if not b.get("repo") or not d.exists() or "launch" not in b:
             print(f"· springer {b['name']} over (ikke installeret)")
