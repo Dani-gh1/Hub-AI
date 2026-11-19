@@ -96,6 +96,22 @@ Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`,
 python3 -m unittest discover -s tests -t .
 ```
 
+## Fra hvor som helst, når som helst
+
+Kør på den maskine, hvor hubben kører (helst en server, der altid er tændt):
+
+```bash
+./deploy/public.sh on
+```
+
+Scriptet gør dashboardet nåbart over internettet med **HTTPS og adgangskode** via Tailscale Funnel (gratis, ingen åbne porte) og skriver
+adressen ud (`https://<maskine>.<dit-net>.ts.net`). Første gang skal du tillade Funnel i din Tailscale-konto; scriptet siger hvordan.
+`./deploy/public.sh off` slår det fra igen, og `status` viser adressen.
+
+Beskyttelse: kræver en adgangskode på mindst 12 tegn (laves automatisk), hubben åbner kun lokalt og nås gennem den krypterede tunnel, og
+efter 5 forkerte forsøg spærres adressen (først 1 minut, derefter længere, højst 15). Adresser kan ikke snydes med opdigtede
+`X-Forwarded-For`-headere. Brug Pages-linket `…/Hub-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
+
 ## Mac: "unable to get local issuer certificate"
 
 Python fra python.org leveres uden rod-certifikater, så alle HTTPS-kald fejler, selv om netværket er i orden. Så kan ingen bot hente

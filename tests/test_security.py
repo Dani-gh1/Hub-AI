@@ -1,0 +1,142 @@
+import base64
+import json
+import os
+import threading
+import unittest
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
+
+from hub.server import Throttle, check_public_config, client_ip, make_handler
+
+
+class Clock:
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+
+class ThrottleTests(unittest.TestCase):
+    def test_locks_after_five_failures_then_doubles_up_to_the_cap(self):
+        c = Clock()
+        th = Throttle(now=c)
+        for _ in range(4):
+            th.failed("1.2.3.4")
+        self.assertEqual(th.locked("1.2.3.4"), 0)
+        th.failed("1.2.3.4")                                   # 5. forkerte forsøg
+        self.assertEqual(th.locked("1.2.3.4"), 60)
+        c.t += 61
+        self.assertEqual(th.locked("1.2.3.4"), 0)
+        th.failed("1.2.3.4")                                   # næste forkerte forsøg: dobbelt så længe
+        self.assertEqual(th.locked("1.2.3.4"), 120)
+        for _ in range(20):
+            th.failed("1.2.3.4")
+        self.assertEqual(th.locked("1.2.3.4"), 900)            # højst 15 minutter
+        self.assertEqual(th.locked("9.9.9.9"), 0)              # andre adresser er upåvirkede
+
+    def test_a_correct_login_resets(self):
+        th = Throttle(now=Clock())
+        for _ in range(5):
+            th.failed("a")
+        th.ok("a")
+        self.assertEqual(th.locked("a"), 0)
+
+    def test_memory_stays_bounded_under_a_spray_of_addresses(self):
+        th = Throttle(now=Clock())
+        for i in range(6000):
+            th.failed(f"10.0.{i // 250}.{i % 250}")
+        self.assertLess(len(th.state), 6000)
+
+
+class HelperTests(unittest.TestCase):
+    def test_client_ip_uses_the_last_forwarded_address_only_from_the_local_proxy(self):
+        self.assertEqual(client_ip("127.0.0.1", "6.6.6.6, 85.1.2.3"), "85.1.2.3")      # det første kan være opfundet af klienten
+        self.assertEqual(client_ip("203.0.113.9", "1.1.1.1"), "203.0.113.9")           # udefra ignoreres headeren
+        self.assertEqual(client_ip("127.0.0.1", "ikke en adresse; drop"), "127.0.0.1")
+        self.assertEqual(client_ip("127.0.0.1", None), "127.0.0.1")
+
+    def test_public_mode_needs_a_long_password_and_binds_locally(self):
+        host, err = check_public_config({"HUB_PUBLIC": "1", "HUB_HOST": "0.0.0.0", "HUB_PASSWORD": "kort"})
+        self.assertIsNotNone(err)
+        host, err = check_public_config({"HUB_PUBLIC": "1", "HUB_HOST": "0.0.0.0", "HUB_PASSWORD": "en-lang-adgangskode"})
+        self.assertEqual((host, err), ("127.0.0.1", None))                              # tvinges til kun lokal åbning
+        self.assertEqual(check_public_config({"HUB_HOST": "0.0.0.0"}), ("0.0.0.0", None))   # uden offentlig tilstand: uændret
+
+
+class ServerTests(unittest.TestCase):
+    def serve(self, **kw):
+        os.environ["HUB_PASSWORD"] = "hemmelig-og-lang"
+        try:
+            handler = make_handler([], **kw)
+        finally:
+            del os.environ["HUB_PASSWORD"]
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.shutdown)
+        return f"http://127.0.0.1:{srv.server_address[1]}"
+
+    @staticmethod
+    def get(url, pw=None, extra=None):
+        h = dict(extra or {})
+        if pw is not None:
+            h["Authorization"] = "Basic " + base64.b64encode(f"x:{pw}".encode()).decode()
+        try:
+            r = urllib.request.urlopen(urllib.request.Request(url, headers=h))
+            return r.status, r.headers
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers
+
+    def test_repeated_wrong_passwords_lock_out_even_the_right_one(self):
+        base = self.serve(throttle=Throttle(max_fails=3, base=60))
+        self.assertEqual(self.get(base + "/api/bots")[0], 401)                 # uden kode: bare en forespørgsel om login
+        self.assertEqual(self.get(base + "/api/bots")[0], 401)
+        for _ in range(3):
+            self.assertEqual(self.get(base + "/api/bots", "forkert")[0], 401)
+        code, headers = self.get(base + "/api/bots", "hemmelig-og-lang")        # nu er adressen spærret
+        self.assertEqual(code, 429)
+        self.assertGreaterEqual(int(headers["Retry-After"]), 1)
+
+    def test_the_right_password_works_and_resets_the_count(self):
+        base = self.serve(throttle=Throttle(max_fails=3, base=60))
+        for _ in range(2):
+            self.get(base + "/api/bots", "forkert")
+        self.assertEqual(self.get(base + "/api/bots", "hemmelig-og-lang")[0], 200)
+        for _ in range(2):                                                      # tælleren er nulstillet: to nye fejl låser ikke
+            self.get(base + "/api/bots", "forkert")
+        self.assertEqual(self.get(base + "/api/bots", "hemmelig-og-lang")[0], 200)
+
+    def test_an_attacker_cannot_dodge_the_lock_by_inventing_forwarded_addresses(self):
+        base = self.serve(throttle=Throttle(max_fails=3, base=60))
+        for i in range(3):                                                      # nye opdigtede adresser først i headeren, samme rigtige til sidst
+            self.get(base + "/api/bots", "forkert", {"X-Forwarded-For": f"6.6.6.{i}, 85.1.2.3"})
+        self.assertEqual(self.get(base + "/api/bots", "hemmelig-og-lang", {"X-Forwarded-For": "7.7.7.7, 85.1.2.3"})[0], 429)
+        self.assertEqual(self.get(base + "/api/bots", "hemmelig-og-lang", {"X-Forwarded-For": "7.7.7.7, 85.9.9.9"})[0], 200)   # anden rigtig adresse
+
+    def test_passwords_with_danish_letters_work_and_wrong_ones_are_counted(self):
+        os.environ["HUB_PASSWORD"] = "blåbærgrød-æøå-123"
+        try:
+            handler = make_handler([], throttle=Throttle(max_fails=2, base=60))
+        finally:
+            del os.environ["HUB_PASSWORD"]
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.shutdown)
+        base = f"http://127.0.0.1:{srv.server_address[1]}"
+        self.assertEqual(self.get(base + "/api/bots", "blåbærgrød-æøå-123")[0], 200)
+        self.assertEqual(self.get(base + "/api/bots", "gæt-med-æ")[0], 401)           # før: serveren lukkede forbindelsen uden svar
+        self.assertEqual(self.get(base + "/api/bots", "gæt-med-ø")[0], 401)
+        self.assertEqual(self.get(base + "/api/bots", "blåbærgrød-æøå-123")[0], 429)   # forkerte gæt med æøå tæller med
+
+    def test_security_headers_and_hsts_behind_https(self):
+        base = self.serve()
+        _, h = self.get(base + "/healthz")
+        self.assertEqual((h["X-Frame-Options"], h["Referrer-Policy"], h["X-Content-Type-Options"]), ("SAMEORIGIN", "no-referrer", "nosniff"))
+        self.assertIsNone(h["Strict-Transport-Security"])
+        _, h = self.get(base + "/healthz", None, {"X-Forwarded-Proto": "https"})
+        self.assertIn("max-age", h["Strict-Transport-Security"])
+
+
+if __name__ == "__main__":
+    unittest.main()

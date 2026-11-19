@@ -22,6 +22,10 @@ restart() {
 host() { grep '^HUB_HOST=' "$ENV_FILE" | cut -d= -f2; }
 pw() { grep '^HUB_PASSWORD=' "$ENV_FILE" | cut -d= -f2-; }
 
+public() { [ "$(grep '^HUB_PUBLIC=' "$ENV_FILE" | cut -d= -f2)" = 1 ]; }
+case "${1:-show}" in
+  off|local) if public; then echo "✗ Dashboardet er åbent for hele internettet, så adgangskoden kan ikke slås fra. Kør først: ./deploy/public.sh off"; exit 1; fi ;;
+esac
 case "${1:-show}" in
   off)   setvar HUB_PASSWORD ""; restart
          echo "✓ Adgangskoden er slået fra."
