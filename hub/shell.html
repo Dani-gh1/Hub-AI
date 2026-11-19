@@ -233,6 +233,15 @@ function ago(s) {
   return `${Math.round(s / 86400)} d. siden`;
 }
 
+/* Tæller: hvor længe botterne har samlet data. Elementer med data-since opdateres hvert sekund. */
+function dur(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const d = Math.floor(sec / 86400), t = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60, p2 = (n) => String(n).padStart(2, "0");
+  return d ? `${d} d ${t} t ${p2(m)} m` : t ? `${t} t ${p2(m)} m ${p2(s)} s` : `${m} m ${p2(s)} s`;
+}
+const tick = (since, cls) => since ? h("span", { class: "tick " + (cls || ""), "data-since": String(since) }, dur(Date.now() / 1000 - since)) : "–";
+setInterval(() => document.querySelectorAll("[data-since]").forEach((e) => { e.textContent = dur(Date.now() / 1000 - Number(e.dataset.since)); }), 1000);
+
 /* ---------- topnavigation ---------- */
 function drawTabs() {
   const mk = (key, text, state, small) => h("button", { class: "pill", role: "tab", "aria-selected": String(key === curKey), type: "button", onclick: () => go(key) },
@@ -319,6 +328,7 @@ function vOverblik() {
       kpi("Bedste strategi", best ? pct(best.return_pct) : "–", best && best.name, best && tone(best.return_pct)),
       kpi("Strategier i plus", `${plus} af ${list.length}`),
       kpi("Gennemsnit", pct(avg), "alle strategier", tone(avg)),
+      kpi("Har samlet data i", tick((bot() || {}).since), "siden hubben første gang så botten køre"),
       kpi("Handler", String(closed + openPos), `${openPos} åbne · ${closed} lukkede` + (closed < 20 ? " (for få til konklusioner)" : ""))),
     h("div", { class: "card" },
       h("div", { class: "head" }, h("h2", {}, "Afkast over tid"), h("p", {}, "I procent af papirkontoen. De bedste strategier er farvet.")),
@@ -499,15 +509,17 @@ function renderHub(rows) {
   const link = (b) => h("a", { href: "#" + b.key }, b.name);
   const ranked = rows.filter((b) => b.best).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !b.best);
   const live = rows.filter((b) => b.up).length;
+  const firsts = rows.map((b) => b.since).filter((x) => x);
   view(
     h("div", { class: "grid kpis" },
+      kpi("Har samlet data i", tick(firsts.length ? Math.min(...firsts) : null), "siden den første bot startede"),
       kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),
       kpi("Botter der scanner", `${rows.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))).length} af ${rows.filter((b) => b.configured).length}`,
         rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${live} kører`),
       kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct))),
     h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Kører de?"), h("p", {}, "Status for alle botter lige nu")),
       h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", { class: "hide-m" }, "Investerer i"), h("th", {}, "Status"),
-        h("th", { class: "hide-m" }, "Seneste scanning"), h("th", { class: "hide-m" }, "Handler"),
+        h("th", { class: "hide-m" }, "Seneste scanning"), h("th", { class: "hide-m" }, "Samler data"), h("th", { class: "hide-m" }, "Handler"),
         h("th", { class: "n" }, h("span", { class: "hide-m" }, "Strategier i plus"), h("span", { class: "under" }, "I plus")))),
         h("tbody", {}, rows.map((b) => {
           const stale = b.up && !b.idle && b.scan_age != null && b.scan_age > STALE;
@@ -517,6 +529,7 @@ function renderHub(rows) {
             h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + dot }), text), h("span", { class: "under" }, b.up ? "Scannet " + ago(b.scan_age) + (b.trades ? " · " + (b.trades.open + b.trades.closed ? `${b.trades.open} åbne, ${b.trades.closed} lukkede` : "ingen handler endnu") : "") : ""),
               (b.idle || b.issue || (b.note && !b.configured)) ? h("div", { class: "issue", title: b.idle || b.issue || b.note }, b.idle || b.issue || b.note) : null),
             h("td", { class: "hide-m " + (stale ? "neg" : "mute") }, b.up ? (b.idle ? "børsen er lukket" : ago(b.scan_age)) : "–"),
+            h("td", { class: "hide-m num" }, tick(b.since)),
             h("td", { class: "hide-m" }, b.trades ? (b.trades.open + b.trades.closed ? `${b.trades.open} åbne · ${b.trades.closed} lukkede` : "Ingen endnu") : "–"),
             h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));
         }))))),

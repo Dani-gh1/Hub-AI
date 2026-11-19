@@ -141,6 +141,36 @@ def not_installed(bot: dict) -> bool:
         and not (BOTS_DIR / bot["repo"].split("/")[-1]).exists()
 
 
+SINCE_LOCK = threading.Lock()
+
+
+def since_file() -> Path:
+    return Path(os.environ.get("HUB_SINCE_FILE") or ROOT / "logs" / "collecting-since.json")
+
+
+def collecting_since(key: str, up: bool) -> float | None:
+    """Hvornår hubben første gang så botten køre (unix-tid). Gemmes, så uret fortsætter efter genstart og opdatering."""
+    with SINCE_LOCK:
+        f = since_file()
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                data = {}
+        except (OSError, ValueError):
+            data = {}
+        if up and not isinstance(data.get(key), (int, float)):
+            data[key] = round(time.time(), 1)
+            try:
+                f.parent.mkdir(parents=True, exist_ok=True)
+                tmp = f.with_suffix(".tmp")
+                tmp.write_text(json.dumps(data), encoding="utf-8")
+                tmp.replace(f)
+            except OSError:
+                pass
+        v = data.get(key)
+        return v if isinstance(v, (int, float)) else None
+
+
 def bot_overview(bot: dict) -> dict:
     out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
            "configured": bool(bot.get("repo")) and not bot.get("disabled"), "note": bot.get("note", ""),
@@ -149,6 +179,7 @@ def bot_overview(bot: dict) -> dict:
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
     out["scan_age"], out["issue"], out["trades"], out["idle"] = None, "", None, ""
+    out["since"] = collecting_since(bot["key"], out["up"])
     out["note_short"] = "Slået fra her" if bot.get("disabled") else ""
     if not_installed(bot):
         out["configured"], out["up"] = False, False
@@ -311,6 +342,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                             "short": b.get("short", ""),
                             "configured": bool(b.get("repo")) and not b.get("disabled"), "note": b.get("note", ""), "note_short": "Slået fra her" if b.get("disabled") else "",
                             "up": not b.get("disabled") and port_open(b["port"], bot_host(b))} for b in bots]
+                    for o in out:
+                        o["since"] = collecting_since(o["key"], o["up"])
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
