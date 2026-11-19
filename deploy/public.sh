@@ -38,6 +38,23 @@ url_of() { grep -oE 'https://[A-Za-z0-9.-]+\.ts\.net[^ ]*' | head -1 || true; }
 funnel_url() { "$TS" funnel status 2>/dev/null | url_of; }
 serve_url() { "$TS" serve status 2>/dev/null | url_of; }
 
+# Eksisterende Tailscale-adresser: én linje "<https-port> <målport>" pr. adresse (fx "443 8787", hvis Nova ligger på hovedadressen)
+mapped() {
+  { "$TS" serve status 2>/dev/null; "$TS" funnel status 2>/dev/null; } | awk '
+    /^https:\/\// { n = split($1, a, ":"); hp = (n >= 3) ? a[3] : 443; sub(/[^0-9].*/, "", hp) }
+    /\|-- \/ .*proxy/ { t = $0; sub(/.*:/, "", t); sub(/[^0-9].*/, "", t); print hp, t }' | sort -u
+}
+# Hubben får port 443, hvis den er fri (eller allerede er hubbens), ellers 8443, og ellers 10000. Det er de porte, Funnel tillader.
+pick_https() {
+  HTTPS=443; local m; m="$(mapped)"
+  if echo "$m" | awk -v p="$PORT" '$1 == 443 && $2 != p { f = 1 } END { exit !f }'; then
+    HTTPS=8443
+    echo "$m" | awk -v p="$PORT" '$1 == 8443 && $2 != p { f = 1 } END { exit !f }' && HTTPS=10000
+    echo "• Hovedadressen (port 443) bruges allerede af en anden tjeneste, fx din Nova. Den bliver ikke rørt. Dashboardet får port $HTTPS i stedet."
+  fi
+  setvar HUB_TS_HTTPS "$HTTPS"
+}
+
 need_login() { "$TS" status >/dev/null 2>&1 || { echo "Tailscale er ikke logget ind. Kør: $TS up"; exit 1; }; }
 save_host() { [ -n "$(getvar HUB_HOST_BEFORE_PUBLIC)" ] || setvar HUB_HOST_BEFORE_PUBLIC "$(getvar HUB_HOST)"; setvar HUB_HOST 127.0.0.1; }   # hubben åbner kun lokalt
 wait_hub() { { [ "$DRY" = 1 ] || [ "$RESTARTED" = 0 ]; } || for _ in $(seq 1 30); do curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break; sleep 1; done; }
@@ -49,14 +66,16 @@ tailscale_help() {
   echo "  Kør så scriptet igen."
 }
 funnel_on() {
-  set +e; OUT="$("$TS" funnel --bg "$PORT" 2>&1)"; RC=$?
-  [ $RC -ne 0 ] && { OUT="$("$TS" funnel "$PORT" on 2>&1)"; RC=$?; }        # ældre Tailscale-versioner
+  pick_https
+  set +e; OUT="$("$TS" funnel --bg --https="$HTTPS" "$PORT" 2>&1)"; RC=$?
+  [ $RC -ne 0 ] && [ "$HTTPS" = 443 ] && { OUT="$("$TS" funnel "$PORT" on 2>&1)"; RC=$?; }        # ældre Tailscale-versioner
   set -e; [ $RC -eq 0 ] || { tailscale_help "$OUT"; exit 1; }
   URL="$(echo "$OUT" | url_of)"; URL="${URL:-$(funnel_url)}"
 }
 serve_on() {
-  set +e; "$TS" funnel --https=443 off >/dev/null 2>&1; OUT="$("$TS" serve --bg "$PORT" 2>&1)"; RC=$?
-  [ $RC -ne 0 ] && { OUT="$("$TS" serve https / "http://127.0.0.1:$PORT" 2>&1)"; RC=$?; }
+  pick_https
+  set +e; "$TS" funnel --https="$HTTPS" off >/dev/null 2>&1; OUT="$("$TS" serve --bg --https="$HTTPS" "$PORT" 2>&1)"; RC=$?
+  [ $RC -ne 0 ] && [ "$HTTPS" = 443 ] && { OUT="$("$TS" serve https / "http://127.0.0.1:$PORT" 2>&1)"; RC=$?; }
   set -e; [ $RC -eq 0 ] || { tailscale_help "$OUT"; exit 1; }
   URL="$(echo "$OUT" | url_of)"; URL="${URL:-$(serve_url)}"
 }
@@ -90,10 +109,10 @@ case "${1:-status}" in
     echo; echo "  Adresse: ${URL:-(se: $TS funnel status)}"; phone_link
     echo; echo "Hastighedsgrænse: højst 240 forespørgsler i minuttet pr. besøgende. Slå det fra igen med: ./deploy/public.sh off" ;;
   off)
-    set +e
-    "$TS" funnel --https=443 off >/dev/null 2>&1 || "$TS" funnel "$PORT" off >/dev/null 2>&1
-    "$TS" serve --https=443 off >/dev/null 2>&1 || "$TS" serve "$PORT" off >/dev/null 2>&1
-    set -e
+    H="$(getvar HUB_TS_HTTPS)"
+    if [ -n "$H" ]; then                                   # kun den adresse, hubben selv har oprettet (rører aldrig fx Novas)
+      set +e; "$TS" funnel --https="$H" off >/dev/null 2>&1; "$TS" serve --https="$H" off >/dev/null 2>&1; set -e
+    fi
     setvar HUB_PUBLIC 0; setvar HUB_OPEN 0
     BEFORE="$(getvar HUB_HOST_BEFORE_PUBLIC)"; [ -n "$BEFORE" ] && setvar HUB_HOST "$BEFORE"
     restart
@@ -102,6 +121,7 @@ case "${1:-status}" in
     MODE="fra"; [ "$(getvar HUB_PUBLIC)" = 1 ] && MODE="internettet, $([ "$(getvar HUB_OPEN)" = 1 ] && echo "uden adgangskode" || echo "med adgangskode")"
     [ "$MODE" = fra ] && [ -n "$(serve_url)" ] && MODE="privat (kun dine egne enheder med Tailscale)"
     echo "Adgang: $MODE   Vært: $(getvar HUB_HOST)   Port: $PORT"
-    echo "Adresse: $( { funnel_url; serve_url; } 2>/dev/null | head -1 )" ;;
+    H="$(getvar HUB_TS_HTTPS)"; echo "Tailscale-port: ${H:-ikke sat}"
+    echo "Alle Tailscale-adresser på denne maskine:"; mapped | sed 's/^/   https-port /; s/ \([0-9]*\)$/ → lokal port \1/' ;;
   *) echo "Brug: $0 private | on | open --yes | off | status"; exit 1 ;;
 esac

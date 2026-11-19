@@ -122,6 +122,9 @@ adressen (først 1 minut, derefter længere, højst 15). Gætning kan ikke snyde
 Åbent for hele internettet **uden adgangskode**. Alle, der kender adressen, kan se dashboardet (kun læsning, kun papirhandel). Der er en
 hastighedsgrænse på 240 forespørgsler i minuttet pr. besøgende. `.ts.net`-adresser kan findes via certifikatlister, så vælg hellere `private`.
 
+Bruger en anden tjeneste allerede hovedadressen (port 443), fx din Nova, rører scriptet den ikke. Dashboardet får i stedet port 8443 (eller 10000), og adressen
+bliver fx `https://<maskine>.ts.net:8443`. `off` fjerner kun hubbens egen adresse.
+
 `./deploy/public.sh off` slår det hele fra, og `status` viser tilstand og adresse. Første gang skal du tillade HTTPS (og til `on`/`open` også Funnel) i
 din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Hub-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
 
