@@ -125,6 +125,9 @@ hastighedsgrænse på 240 forespørgsler i minuttet pr. besøgende. `.ts.net`-ad
 Bruger en anden tjeneste allerede hovedadressen (port 443), fx din Nova, rører scriptet den ikke. Dashboardet får i stedet port 8443 (eller 10000), og adressen
 bliver fx `https://<maskine>.ts.net:8443`. `off` fjerner kun hubbens egen adresse.
 
+Kræver Tailscale administratorrettigheder ("Access denied"), kører scriptet kommandoen igen med `sudo`. Du kan i stedet give din bruger lov én gang med
+`sudo tailscale set --operator=$USER`.
+
 `./deploy/public.sh off` slår det hele fra, og `status` viser tilstand og adresse. Første gang skal du tillade HTTPS (og til `on`/`open` også Funnel) i
 din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Hub-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
 

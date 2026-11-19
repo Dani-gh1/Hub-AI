@@ -10,6 +10,8 @@ SCRIPT = Path(__file__).resolve().parent.parent / "deploy" / "public.sh"
 
 STUB = r'''#!/bin/bash
 echo "tailscale $*" >> "$STUBLOG"
+# som på en rigtig server: ændringer afvises, medmindre de køres som root (falsk sudo sætter STUBROOT)
+if { [ -n "${STUBNEEDROOT:-}" ] && [ -z "${STUBROOT:-}" ]; } || [ -n "${STUBALWAYSDENY:-}" ]; then case "$1 $2" in "serve --bg"|"funnel --bg"|"funnel --https"*|"serve --https"*) echo "sending serve config: Access denied: serve config denied"; exit 1;; esac; fi
 hp=443; for a in "$@"; do case "$a" in --https=*) hp="${a#--https=}";; esac; done
 suffix=""; [ "$hp" != 443 ] && suffix=":$hp"
 case "$1" in
@@ -39,9 +41,12 @@ class PublicScriptTests(unittest.TestCase):
         self.log = self.d / "log"
         self.serve = self.d / "serve"
 
-    def run_script(self, *args):
+    def run_script(self, *args, **extra):
+        sudo = self.d / "bin" / "sudo"
+        sudo.write_text('#!/bin/bash\necho "sudo $*" >> "$STUBLOG"\nSTUBROOT=1 exec "$@"\n')
+        sudo.chmod(0o755)
         env = dict(os.environ, STUBLOG=str(self.log), STUBSERVE=str(self.serve), HUB_TAILSCALE=str(self.d / "bin" / "tailscale"),
-                   HUB_DRY_RUN="1", HUB_ENV_FILE=str(self.env_file), HUB_OS="Linux")
+                   HUB_DRY_RUN="1", HUB_ENV_FILE=str(self.env_file), HUB_OS="Linux", PATH=f"{self.d / 'bin'}:{os.environ['PATH']}", **extra)
         return subprocess.run(["bash", str(SCRIPT), *args], capture_output=True, text=True, env=env)
 
     def calls(self):
@@ -84,6 +89,22 @@ class PublicScriptTests(unittest.TestCase):
         r = self.run_script("off")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertFalse(any(" off" in c for c in self.calls()), self.calls())
+
+    def test_tailscale_access_denied_is_retried_with_sudo(self):
+        self.serve.write_text("https://server.tail1.ts.net (tailnet only)\n|-- / proxy http://127.0.0.1:8787\n")
+        r = self.run_script("open", "--yes", STUBNEEDROOT="1")          # præcis fejlen fra din server
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("sudo " + str(self.d / "bin" / "tailscale") + " funnel --bg --https=8443 8080", self.calls())
+        self.assertIn("https://server.tail1.ts.net:8443", r.stdout)
+        self.assertNotIn("Access denied", r.stdout)
+
+    def test_if_tailscale_still_refuses_with_sudo_the_help_says_what_to_do(self):
+        self.serve.write_text("")
+        r = self.run_script("open", "--yes", STUBALWAYSDENY="1")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("administratorrettigheder", r.stdout)
+        self.assertIn("set --operator", r.stdout)
+        self.assertNotIn("admin/acls", r.stdout)                       # ikke den forkerte hjælp om kontoindstillinger
 
     def test_the_hub_keeps_443_when_it_already_owns_it(self):
         self.serve.write_text("https://server.tail1.ts.net (Funnel on)\n|-- / proxy http://127.0.0.1:8080\n")

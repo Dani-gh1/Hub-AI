@@ -55,11 +55,28 @@ pick_https() {
   setvar HUB_TS_HTTPS "$HTTPS"
 }
 
+# Kører en Tailscale-kommando. Afviser Tailscale den ("Access denied": ændringer kræver root eller `tailscale set --operator`),
+# køres den igen med sudo, og resten af scriptet bruger sudo.
+USE_SUDO=0
+tsrun() {
+  local out rc
+  if [ "$USE_SUDO" = 1 ]; then sudo "$TS" "$@" 2>&1; return $?; fi
+  out="$("$TS" "$@" 2>&1)"; rc=$?
+  if [ $rc -ne 0 ] && echo "$out" | grep -qiE 'access denied|permission denied|operator'; then
+    USE_SUDO=1; sudo "$TS" "$@" 2>&1; return $?
+  fi
+  echo "$out"; return $rc
+}
+
 need_login() { "$TS" status >/dev/null 2>&1 || { echo "Tailscale er ikke logget ind. Kør: $TS up"; exit 1; }; }
 save_host() { [ -n "$(getvar HUB_HOST_BEFORE_PUBLIC)" ] || setvar HUB_HOST_BEFORE_PUBLIC "$(getvar HUB_HOST)"; setvar HUB_HOST 127.0.0.1; }   # hubben åbner kun lokalt
 wait_hub() { { [ "$DRY" = 1 ] || [ "$RESTARTED" = 0 ]; } || for _ in $(seq 1 30); do curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break; sleep 1; done; }
 tailscale_help() {
   echo "✗ Tailscale kunne ikke slå det til:"; echo "$1" | sed 's/^/    /'
+  if echo "$1" | grep -qiE 'access denied|permission denied|operator'; then
+    echo; echo "Tailscale kræver administratorrettigheder til det. Prøv:  sudo $TS funnel --bg --https=${HTTPS:-443} $PORT"
+    echo "Eller giv din bruger lov én gang og kør scriptet igen:  sudo $TS set --operator=\$USER"; return
+  fi
   echo; echo "Det skal tillades én gang i din Tailscale-konto:"
   echo "  1. https://login.tailscale.com/admin/dns   → slå 'HTTPS Certificates' til"
   echo "  2. For internetadgang (on/open): https://login.tailscale.com/admin/acls → tillad Funnel (se linjen i fejlen ovenfor)"
@@ -67,15 +84,15 @@ tailscale_help() {
 }
 funnel_on() {
   pick_https
-  set +e; OUT="$("$TS" funnel --bg --https="$HTTPS" "$PORT" 2>&1)"; RC=$?
-  [ $RC -ne 0 ] && [ "$HTTPS" = 443 ] && { OUT="$("$TS" funnel "$PORT" on 2>&1)"; RC=$?; }        # ældre Tailscale-versioner
+  set +e; OUT="$(tsrun funnel --bg --https="$HTTPS" "$PORT")"; RC=$?
+  [ $RC -ne 0 ] && [ "$HTTPS" = 443 ] && { OUT="$(tsrun funnel "$PORT" on)"; RC=$?; }        # ældre Tailscale-versioner
   set -e; [ $RC -eq 0 ] || { tailscale_help "$OUT"; exit 1; }
   URL="$(echo "$OUT" | url_of)"; URL="${URL:-$(funnel_url)}"
 }
 serve_on() {
   pick_https
-  set +e; "$TS" funnel --https="$HTTPS" off >/dev/null 2>&1; OUT="$("$TS" serve --bg --https="$HTTPS" "$PORT" 2>&1)"; RC=$?
-  [ $RC -ne 0 ] && [ "$HTTPS" = 443 ] && { OUT="$("$TS" serve https / "http://127.0.0.1:$PORT" 2>&1)"; RC=$?; }
+  set +e; tsrun funnel --https="$HTTPS" off >/dev/null 2>&1; OUT="$(tsrun serve --bg --https="$HTTPS" "$PORT")"; RC=$?
+  [ $RC -ne 0 ] && [ "$HTTPS" = 443 ] && { OUT="$(tsrun serve https / "http://127.0.0.1:$PORT")"; RC=$?; }
   set -e; [ $RC -eq 0 ] || { tailscale_help "$OUT"; exit 1; }
   URL="$(echo "$OUT" | url_of)"; URL="${URL:-$(serve_url)}"
 }
@@ -111,7 +128,7 @@ case "${1:-status}" in
   off)
     H="$(getvar HUB_TS_HTTPS)"
     if [ -n "$H" ]; then                                   # kun den adresse, hubben selv har oprettet (rører aldrig fx Novas)
-      set +e; "$TS" funnel --https="$H" off >/dev/null 2>&1; "$TS" serve --https="$H" off >/dev/null 2>&1; set -e
+      set +e; tsrun funnel --https="$H" off >/dev/null 2>&1; tsrun serve --https="$H" off >/dev/null 2>&1; set -e
     fi
     setvar HUB_PUBLIC 0; setvar HUB_OPEN 0
     BEFORE="$(getvar HUB_HOST_BEFORE_PUBLIC)"; [ -n "$BEFORE" ] && setvar HUB_HOST "$BEFORE"
