@@ -2,3 +2,4 @@ bots/
 __pycache__/
 *.pyc
 logs/
+backups/

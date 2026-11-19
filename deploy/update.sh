@@ -30,6 +30,13 @@ update_dir() {
   [ -d "$d/.git" ] || return 0
   before="$(as_user git -C "$d" rev-parse HEAD)" || return 0
   as_user git -C "$d" checkout -q -- runs/state.json 2>/dev/null || true    # Novas bog ændres lokalt af botten
+  # statistikken må aldrig nulstilles af en opdatering: holder en ændring en EPOCH-konstant, hentes den ikke (HUB_ALLOW_RESET=1 tillader det)
+  if [ "${HUB_ALLOW_RESET:-0}" != 1 ] && as_user git -C "$d" fetch -q origin ${branch:+"$branch"} 2>/dev/null; then
+    if as_user git -C "$d" diff HEAD FETCH_HEAD --unified=0 -- '*.py' ':(exclude)tests/*' 2>/dev/null \
+       | grep -qiE '^\+[[:space:]]*[A-Za-z_]*epoch[A-Za-z_]*[[:space:]]*(:[^=]*)?=[[:space:]]*([0-9]+|"[^"]*"|'"'"'[^'"'"']*'"'"')[[:space:]]*(#.*)?$'; then
+      say "opdateringen af $d ville nulstille statistikken – holdt tilbage (HUB_ALLOW_RESET=1 for at tillade det)"; return 0
+    fi
+  fi
   if [ -n "$branch" ]; then as_user git -C "$d" pull -q --ff-only origin "$branch" 2>/dev/null
   else as_user git -C "$d" pull -q --ff-only 2>/dev/null; fi || { say "kunne ikke hente $d (springer over)"; return 0; }
   after="$(as_user git -C "$d" rev-parse HEAD)"
@@ -49,6 +56,7 @@ restart() {
   if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else systemctl restart "$1"; fi
 }
 
+(cd "$HUB_DIR" && as_user env HUB_EXTRA_BACKUP="${HUB_UPDATE_NOVA_DIR:-}" python3 -m hub backup >/dev/null 2>&1) || true     # kopi af alle botters data før noget hentes
 hub_changed=0
 update_dir "$HUB_DIR"; [ $? -eq 1 ] && hub_changed=1
 for d in "$HUB_DIR"/bots/*/; do
