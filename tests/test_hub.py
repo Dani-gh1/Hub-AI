@@ -101,6 +101,10 @@ class HubTests(unittest.TestCase):
         self.assertEqual(best_of(rows), {"name": "Y", "return_pct": 2.35, "trades": 30, "count": 2, "positive": 1})
         self.assertIsNone(best_of([]))
         self.assertIsNone(best_of([{"name": "Z", "return_pct": None}]))
+        flat = best_of([{"name": "A", "return_pct": 0.0, "trades": 0}, {"name": "B", "return_pct": 0.001}])
+        self.assertIsNone(flat["name"])                                # 0 % tæller ikke som bedst: vises som '–'
+        self.assertEqual((flat["count"], flat["positive"]), (2, 1))
+        self.assertEqual(best_of([{"name": "A", "return_pct": 0.0}, {"name": "C", "return_pct": -1.5}])["name"], "C")
 
     def test_adapter_helpers(self):
         self.assertEqual(ts(1795046573949), 1795046573.949)      # millisekunder

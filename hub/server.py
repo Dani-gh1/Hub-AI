@@ -207,12 +207,17 @@ def scan_age(bot: dict) -> float | None:
 
 
 def best_of(strategies: list[dict]) -> dict | None:
+    """Botens bedste strategi. Strategier med 0 % (ingen handler eller intet afkast endnu) tæller ikke som bedst;
+    har ingen strategi et afkast, er navnet None (så vises '–'). Antal og 'i plus' tæller alle strategier."""
     rows = [s for s in strategies if isinstance(s.get("return_pct"), (int, float))]
     if not rows:
         return None
-    top = max(rows, key=lambda r: r["return_pct"])
-    return {"name": top["name"], "return_pct": round(top["return_pct"], 2), "trades": top.get("trades") or 0,
-            "count": len(rows), "positive": sum(1 for r in rows if r["return_pct"] > 0)}
+    out = {"name": None, "return_pct": None, "trades": 0, "count": len(rows), "positive": sum(1 for r in rows if r["return_pct"] > 0)}
+    moved = [r for r in rows if round(r["return_pct"], 2) != 0]
+    if moved:
+        top = max(moved, key=lambda r: r["return_pct"])
+        out.update(name=top["name"], return_pct=round(top["return_pct"], 2), trades=top.get("trades") or 0)
+    return out
 
 
 BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
