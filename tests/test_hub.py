@@ -208,3 +208,14 @@ def test_data_since_finds_earliest_point():
          "trades": {"open": [{"ts": 1_200_000_000.0}], "closed": [{"ts": None}]}}
     assert data_since(d) == 1_100_000_000
     assert data_since({"strategies": [], "trades": {"open": [], "closed": []}}) is None
+
+
+def test_apply_cutoff_rebases_curve_and_keeps_original():
+    from hub.server import apply_cutoff
+    d = {"strategies": [{"name": "A", "return_pct": 21.0, "max_dd": 5.0, "curve": [[100, 0], [200, 10], [300, 21]]}],
+         "trades": {"open": [{"ts": 50}], "closed": [{"ts": 150}, {"ts": 250}, {"ts": None}]}}
+    out = apply_cutoff(d, 200)
+    s = out["strategies"][0]
+    assert s["curve"] == [[200, 0.0], [300, 10.0]] and s["return_pct"] == 10.0 and s["max_dd"] == 0.0
+    assert [t["ts"] for t in out["trades"]["closed"]] == [250, None] and out["trades"]["open"] == [{"ts": 50}]
+    assert d["strategies"][0]["return_pct"] == 21.0 and len(d["trades"]["closed"]) == 3     # originalen er urørt

@@ -261,7 +261,17 @@ function go(key, sub) {
 }
 
 /* ---------- data ---------- */
-async function api(path) {
+let CUT = true;
+try { CUT = localStorage.getItem("hubcut") !== "0"; } catch (e) {}
+function cutBar(cut) {
+  const on = CUT && cut;
+  return h("div", { class: "note cutbar" },
+    on ? `Alle botter vises fra ${when(cut)} (den yngste bots start), så de kan sammenlignes. Afkast, kurver og maks. fald er regnet fra da; antal handler og vundet-procent gælder hele perioden. Intet er slettet. ` : "Alle botters data vises fra start. ",
+    h("button", { class: "pill", type: "button", onclick: () => { CUT = !CUT; try { localStorage.setItem("hubcut", CUT ? "1" : "0"); } catch (e) {} lastJson = ""; load(true); } },
+      CUT ? "Vis alt" : "Fælles startdato"));
+}
+async function api(path0) {
+  const path = path0 + (CUT ? "" : (path0.includes("?") ? "&" : "?") + "cut=0");
   const r = await fetch(path, { cache: "no-store" });
   if (!r.ok) throw new Error(r.status);
   return r.json();
@@ -324,6 +334,7 @@ function vOverblik() {
   const wrap = h("div", { class: "chart", id: "chart" });
   const legend = h("div", { class: "legend" });
   view(
+    cutBar(DATA && DATA.cut),
     h("div", { class: "grid kpis" },
       kpi("Bedste strategi", best ? pct(best.return_pct) : "–", best && best.name, best && tone(best.return_pct)),
       kpi("Strategier i plus", `${plus} af ${list.length}`),
@@ -515,6 +526,7 @@ function renderHub(rows) {
   const sinceSub = !oldest ? "ingen data endnu" : withSince.length > 1 && oldest !== youngest
     ? `ældste: ${oldest.name} · yngste: ${youngest.name} (${dur(Date.now() / 1000 - youngest.since)}). Se alle i tabellen.` : oldest.name;
   view(
+    cutBar((rows.find((b) => b.cut) || {}).cut),
     h("div", { class: "grid kpis" },
       kpi("Ældste bots data", tick(firsts.length ? Math.min(...firsts) : null), sinceSub),
       kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),

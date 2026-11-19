@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hmac
 import json
 import os
@@ -95,6 +96,46 @@ def data_since(data: dict) -> float | None:
     return min(times) if times else None
 
 
+def apply_cutoff(data: dict, cut: float) -> dict:
+    """Viser botten fra et fælles tidspunkt: kurver regnes om til 0 % ved `cut`, afkast og maks. fald følger med, og lukkede
+    handler før `cut` skjules. Intet slettes. Antal handler og vundet-procent er botens egne tal for hele perioden."""
+    d = copy.deepcopy(data)
+    d["cut"] = cut
+    tr = d.get("trades") or {}
+    tr["closed"] = [t for t in tr.get("closed") or [] if not isinstance(t.get("ts"), (int, float)) or t["ts"] >= cut]
+    for st in d.get("strategies") or []:
+        curve = [p for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[0], (int, float))]
+        before = [p for p in curve if p[0] <= cut]
+        after = [p for p in curve if p[0] > cut]
+        base = before[-1][1] if before else 0.0
+        if not after:
+            st["curve"], st["return_pct"], st["max_dd"] = [], 0.0, 0.0 if st.get("max_dd") is not None else None
+            continue
+        eq = lambda v: 1 + v / 100.0
+        pts = [[t, round((eq(v) / eq(base) - 1) * 100, 4)] for t, v in after]
+        pts.insert(0, [cut, 0.0])
+        st["curve"], st["return_pct"] = pts, round(pts[-1][1], 2)
+        peak, dd = 1.0, 0.0
+        for _, v in pts:
+            peak = max(peak, eq(v))
+            dd = max(dd, (peak - eq(v)) / peak * 100)
+        if st.get("max_dd") is not None:
+            st["max_dd"] = round(dd, 2)
+    return d
+
+
+def common_start(bots: list[dict]) -> float | None:
+    """Den yngste bots startdato: det tidspunkt, alle botter har data fra."""
+    def one(b):
+        try:
+            return bot_data(b).get("since") if not b.get("disabled") and port_open(b["port"], bot_host(b)) else None
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+    with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
+        starts = [x for x in ex.map(one, bots) if x]
+    return max(starts) if starts else None
+
+
 def bot_data(bot: dict) -> dict:
     """Fælles format for én bot (cachet i 5 sekunder, så flere faner ikke belaster botten)."""
     hit = _cache.get(bot["key"])
@@ -183,7 +224,7 @@ def collecting_since(key: str, up: bool) -> float | None:
         return v if isinstance(v, (int, float)) else None
 
 
-def bot_overview(bot: dict) -> dict:
+def bot_overview(bot: dict, cut: float | None = None) -> dict:
     out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
            "configured": bool(bot.get("repo")) and not bot.get("disabled"), "note": bot.get("note", ""),
            "up": not bot.get("disabled") and port_open(bot["port"], bot_host(bot)), "mode": "live", "best": None}
@@ -199,6 +240,8 @@ def bot_overview(bot: dict) -> dict:
     if out["up"]:
         try:
             data = bot_data(bot)
+            if cut:
+                data = apply_cutoff(data, cut)
             out["best"] = best_of(data["strategies"])
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
@@ -360,13 +403,18 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                         o["since"] = collecting_since(o["key"], o["up"])
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
+                    cut = common_start(bots) if "cut=0" not in query else None
                     with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
-                        out = list(ex.map(bot_overview, bots))
+                        out = list(ex.map(lambda b: bot_overview(b, cut), bots))
+                    for o in out:
+                        o["cut"] = cut
                     return self._send(200, "application/json", json.dumps(out).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     try:
-                        return self._send(200, "application/json", json.dumps(bot_data(by_key[m.group(1)])).encode())
+                        d = bot_data(by_key[m.group(1)])
+                        cut = common_start(bots) if "cut=0" not in query else None
+                        return self._send(200, "application/json", json.dumps(apply_cutoff(d, cut) if cut else d).encode())
                     except (OSError, ValueError, KeyError, TypeError) as e:
                         return self._send(502, "application/json", json.dumps({"error": "Botten svarer ikke som forventet", "detail": str(e)[:200]}).encode())
                 m = re.match(r"^/b/([a-z0-9_-]+)(/.*)?$", path)
