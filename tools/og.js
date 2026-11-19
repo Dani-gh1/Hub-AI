@@ -1,4 +1,4 @@
-// Delingsbillede (1200x630) til docs/assets/og-image.png. Brug: NODE_PATH=... node tools/og.js
+// Delingsbillede (1200x630) til assets/og-image.png. Brug: NODE_PATH=... node tools/og.js
 const fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
 const logo = fs.readFileSync(path.join(__dirname, "..", "hub", "static", "logo.svg"), "utf8");
@@ -10,5 +10,5 @@ h1 em{font-style:normal;background:linear-gradient(120deg,#8b8bff,#c4b5fd);-webk
 ${logo}<div><h1>Hub AI<br><em>Alle dine botter.</em></h1><p>Strategier, regler, desk og handler ét sted.</p><span class="b">Kun papirhandel · fiktive penge</span></div>`;
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1200, height: 630 } });
-  await p.setContent(html); await p.screenshot({ path: path.join(__dirname, "..", "docs", "assets", "og-image.png") }); await b.close(); console.log("og-image skrevet");
+  await p.setContent(html); await p.screenshot({ path: path.join(__dirname, "..", "assets", "og-image.png") }); await b.close(); console.log("og-image skrevet");
 })();

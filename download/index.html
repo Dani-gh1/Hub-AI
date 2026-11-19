@@ -98,6 +98,7 @@ function pick(id) {
   ["ios", "android", "pc"].forEach((p) => (document.getElementById("p-" + p).hidden = p !== id));
 }
 tabs.forEach((t) => t.addEventListener("click", () => pick(t.dataset.p)));
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("../sw.js").catch(() => {});
 if (/android/i.test(navigator.userAgent)) pick("android"); else if (!/iphone|ipad|ipod|macintosh/i.test(navigator.userAgent) && !/mobile/i.test(navigator.userAgent)) pick("pc");
 </script>
 </body>

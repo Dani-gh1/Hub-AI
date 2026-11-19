@@ -110,6 +110,7 @@ $("auto").addEventListener("click", () => { set(K.auto, get(K.auto) === "off" ? 
 const q = new URLSearchParams(location.search).get("server");
 if (q && clean(q)) { set(K.addr, clean(q).url); history.replaceState(null, "", location.pathname); }
 show();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>

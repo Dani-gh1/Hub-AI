@@ -1,9 +1,9 @@
 // Tegner PNG-ikoner ud fra SVG-kilderne i hub/static (kræver playwright: npm i -D playwright).
-// Brug: node tools/icons.js     Resultatet lægges i hub/static og docs/assets.
+// Brug: node tools/icons.js     Resultatet lægges i hub/static og assets/ (forsiden).
 const fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
 const root = path.join(__dirname, "..");
-const st = path.join(root, "hub", "static"), out2 = path.join(root, "docs", "assets");
+const st = path.join(root, "hub", "static"), out2 = path.join(root, "assets");
 fs.mkdirSync(out2, { recursive: true });
 const svg = (f) => fs.readFileSync(path.join(st, f), "utf8");
 const jobs = [
