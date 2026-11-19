@@ -98,19 +98,31 @@ python3 -m unittest discover -s tests -t .
 
 ## Fra hvor som helst, når som helst
 
-Kør på den maskine, hvor hubben kører (helst en server, der altid er tændt):
+Kør på den maskine, hvor hubben kører (helst en server, der altid er tændt). Vælg, hvem der skal kunne åbne det:
+
+```bash
+./deploy/public.sh private
+```
+
+**Anbefalet.** Dashboardet kan åbnes fra hvor som helst, men **kun fra dine egne enheder** med Tailscale-appen (samme konto). Ingen
+adgangskode nødvendig, og ingen andre kan åbne det. Adressen er en fast `https://<maskine>.<dit-net>.ts.net`.
 
 ```bash
 ./deploy/public.sh on
 ```
 
-Scriptet gør dashboardet nåbart over internettet med **HTTPS og adgangskode** via Tailscale Funnel (gratis, ingen åbne porte) og skriver
-adressen ud (`https://<maskine>.<dit-net>.ts.net`). Første gang skal du tillade Funnel i din Tailscale-konto; scriptet siger hvordan.
-`./deploy/public.sh off` slår det fra igen, og `status` viser adressen.
+Åbent for hele internettet (også computere uden Tailscale), beskyttet af en lang adgangskode, som scriptet laver. Efter 5 forkerte forsøg spærres
+adressen (først 1 minut, derefter længere, højst 15). Gætning kan ikke snydes med opdigtede `X-Forwarded-For`-headere.
 
-Beskyttelse: kræver en adgangskode på mindst 12 tegn (laves automatisk), hubben åbner kun lokalt og nås gennem den krypterede tunnel, og
-efter 5 forkerte forsøg spærres adressen (først 1 minut, derefter længere, højst 15). Adresser kan ikke snydes med opdigtede
-`X-Forwarded-For`-headere. Brug Pages-linket `…/Hub-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
+```bash
+./deploy/public.sh open --yes
+```
+
+Åbent for hele internettet **uden adgangskode**. Alle, der kender adressen, kan se dashboardet (kun læsning, kun papirhandel). Der er en
+hastighedsgrænse på 240 forespørgsler i minuttet pr. besøgende. `.ts.net`-adresser kan findes via certifikatlister, så vælg hellere `private`.
+
+`./deploy/public.sh off` slår det hele fra, og `status` viser tilstand og adresse. Første gang skal du tillade HTTPS (og til `on`/`open` også Funnel) i
+din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Hub-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
 
 ## Mac: "unable to get local issuer certificate"
 

@@ -81,15 +81,15 @@ python3 -m hub run</code><button type="button" data-copy="c2">Kopiér</button></
   </div>
 
   <h2 class="sec" id="overalt">4 · Åbn dashboardet fra hvor som helst</h2>
-  <p class="sub">Når hubben kører på en server, kan du åbne den fra telefonen overalt, med HTTPS og adgangskode. Det kræver Tailscale (gratis).</p>
+  <p class="sub">Når hubben kører på en server, kan du åbne den fra telefonen overalt, med HTTPS. Det kræver Tailscale (gratis).</p>
   <div class="card">
     <ol class="steps">
-      <li><div><b>Kør på serveren</b><span>Scriptet laver en adgangskode og slår Tailscale Funnel til.
-        <div class="code"><code id="c3">cd Hub-AI &amp;&amp; ./deploy/public.sh on</code><button type="button" data-copy="c3">Kopiér</button></div></span></div></li>
-      <li><div><b>Tillad Funnel én gang</b><span>Første gang beder Tailscale dig slå <i>HTTPS Certificates</i> og <i>Funnel</i> til i din konto. Scriptet viser, hvor.</span></div></li>
+      <li><div><b>Kør på serveren</b><span>Kun dine egne enheder (med Tailscale-appen) kan åbne den. Ingen adgangskode nødvendig.
+        <div class="code"><code id="c3">cd Hub-AI &amp;&amp; ./deploy/public.sh private</code><button type="button" data-copy="c3">Kopiér</button></div></span></div></li>
+      <li><div><b>Tillad HTTPS én gang</b><span>Første gang beder Tailscale dig slå <i>HTTPS Certificates</i> til i din konto. Scriptet viser, hvor.</span></div></li>
       <li><div><b>Åbn adressen</b><span>Du får en fast adresse, der ender på <code>.ts.net</code>. Gem den på <a href="../">forsiden</a>, og læg den på hjemmeskærmen.</span></div></li>
     </ol>
-    <p class="hint">Efter fem forkerte adgangskoder spærres adressen kortvarigt. Slå det fra igen med <code>./deploy/public.sh off</code>.</p>
+    <p class="hint">Vil du åbne den fra en computer uden Tailscale, så brug <code>./deploy/public.sh on</code> (med adgangskode). Slå alt fra igen med <code>./deploy/public.sh off</code>.</p>
   </div>
 
   <footer>Hub AI · Kun papirhandel med fiktive penge · <a href="../">Åbn dashboard</a> · <a href="https://github.com/Dani-gh1/Hub-AI">GitHub</a></footer>

@@ -196,6 +196,30 @@ class Throttle:
             self.state.pop(ip, None)
 
 
+class RateLimit:
+    """Højst `limit` forespørgsler pr. adresse pr. `window` sekunder. Bruges, når hubben er åben for internettet, så en fremmed ikke
+    kan belaste botterne ved at hamre på dashboardet. Dashboardet selv bruger kun et par forespørgsler i minuttet."""
+
+    def __init__(self, limit: int = 240, window: float = 60.0, now=time.monotonic):
+        self.limit, self.window, self.now = limit, window, now
+        self.hits: dict[str, list[float]] = {}
+        self.lock = threading.Lock()
+
+    def allow(self, ip: str) -> float:
+        """0 hvis forespørgslen er tilladt, ellers antal sekunder, der skal gå, før næste er tilladt."""
+        with self.lock:
+            t = self.now()
+            if len(self.hits) > 5000:
+                self.hits = {k: [x for x in v if t - x < self.window] for k, v in self.hits.items() if v and t - v[-1] < self.window}
+            h = [x for x in self.hits.get(ip, []) if t - x < self.window]
+            if len(h) >= self.limit:
+                self.hits[ip] = h
+                return max(1.0, self.window - (t - h[0]))
+            h.append(t)
+            self.hits[ip] = h
+            return 0.0
+
+
 def client_ip(peer: str, forwarded: str | None) -> str:
     """Klientens adresse. Kommer forbindelsen fra maskinen selv (Tailscale Funnel/Serve), bruges den SIDSTE adresse i
     X-Forwarded-For, som proxyen selv tilføjer. De første kan klienten have opfundet for at undgå spærringen."""
@@ -212,15 +236,19 @@ def check_public_config(env) -> tuple[str, str | None]:
     host = env.get("HUB_HOST", "127.0.0.1")
     if env.get("HUB_PUBLIC") != "1":
         return host, None
+    if env.get("HUB_OPEN") == "1" and not env.get("HUB_PASSWORD"):      # bevidst valg: åbent for alle uden adgangskode
+        return "127.0.0.1", None
     if len(env.get("HUB_PASSWORD", "")) < 12:
         return "127.0.0.1", "HUB_PUBLIC=1 kræver en adgangskode på mindst 12 tegn (HUB_PASSWORD). Kør ./deploy/public.sh on"
     return "127.0.0.1", None
 
 
-def make_handler(bots: list[dict], throttle: Throttle | None = None):
+def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: RateLimit | None = None):
     by_key = {b["key"]: b for b in bots}
     password = os.environ.get("HUB_PASSWORD", "")
     throttle = throttle or Throttle()
+    public = os.environ.get("HUB_PUBLIC") == "1"
+    ratelimit = ratelimit or (RateLimit() if public else None)
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, ctype: str, body: bytes, extra: dict | None = None):
@@ -259,6 +287,10 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None):
                     return self._send(200, STATIC_TYPES[f.suffix], f.read_bytes(), {"Cache-Control": "public, max-age=86400"})
                 return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
             ip = client_ip(self.client_address[0], self.headers.get("X-Forwarded-For"))
+            if ratelimit is not None:
+                slow = ratelimit.allow(ip)
+                if slow:
+                    return self._send(429, "text/plain; charset=utf-8", "For mange forespørgsler. Vent lidt.".encode(), {"Retry-After": str(int(slow) + 1)})
             wait = throttle.locked(ip) if password else 0
             if wait:
                 return self._send(429, "text/plain; charset=utf-8", "For mange forkerte forsøg. Prøv igen om lidt.".encode(),
@@ -322,6 +354,8 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
         raise SystemExit(problem)
     if os.environ.get("HUB_PUBLIC") == "1":
         print("Offentlig tilstand: hubben åbner kun på 127.0.0.1 og nås gennem den krypterede tunnel.", flush=True)
+        if not os.environ.get("HUB_PASSWORD"):
+            print("ADVARSEL: ingen adgangskode. Alle, der kender adressen, kan se dashboardet (kun papirhandel).", flush=True)
     if host not in ("127.0.0.1", "localhost") and not os.environ.get("HUB_PASSWORD"):
         print("ADVARSEL: hubben er åben på netværket uden HUB_PASSWORD.")
     httpd = ThreadingHTTPServer((host, port), make_handler(bots))

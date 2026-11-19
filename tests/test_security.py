@@ -140,3 +140,37 @@ class ServerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RateLimitAndOpenModeTests(unittest.TestCase):
+    def test_rate_limit_allows_normal_use_and_blocks_hammering(self):
+        from hub.server import RateLimit
+        c = Clock()
+        rl = RateLimit(limit=5, window=60, now=c)
+        self.assertEqual([rl.allow("a") for _ in range(5)], [0.0] * 5)
+        self.assertGreater(rl.allow("a"), 0)                    # den 6. inden for et minut afvises
+        self.assertEqual(rl.allow("b"), 0)                      # andre adresser er upåvirkede
+        c.t += 61
+        self.assertEqual(rl.allow("a"), 0)                      # og efter et minut er alt tilladt igen
+
+    def test_open_mode_is_an_explicit_choice_and_needs_the_flag(self):
+        self.assertEqual(check_public_config({"HUB_PUBLIC": "1", "HUB_OPEN": "1", "HUB_HOST": "0.0.0.0"}), ("127.0.0.1", None))
+        self.assertIsNotNone(check_public_config({"HUB_PUBLIC": "1", "HUB_HOST": "0.0.0.0"})[1])        # uden flag kræves stadig adgangskode
+        host, err = check_public_config({"HUB_PUBLIC": "1", "HUB_OPEN": "1", "HUB_PASSWORD": "kort"})
+        self.assertIsNotNone(err)                                                                       # en kort adgangskode er stadig for svag
+
+    def test_public_server_rate_limits_even_without_a_password(self):
+        from hub.server import RateLimit
+        os.environ.pop("HUB_PASSWORD", None)
+        handler = make_handler([], ratelimit=RateLimit(limit=3, window=60))
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.shutdown)
+        base = f"http://127.0.0.1:{srv.server_address[1]}"
+        codes = []
+        for _ in range(5):
+            try:
+                codes.append(urllib.request.urlopen(base + "/api/bots").status)
+            except urllib.error.HTTPError as e:
+                codes.append(e.code)
+        self.assertEqual(codes, [200, 200, 200, 429, 429])
