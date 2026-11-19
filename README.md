@@ -128,6 +128,18 @@ bliver fx `https://<maskine>.ts.net:8443`. `off` fjerner kun hubbens egen adress
 `./deploy/public.sh off` slår det hele fra, og `status` viser tilstand og adresse. Første gang skal du tillade HTTPS (og til `on`/`open` også Funnel) i
 din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Hub-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
 
+## Tjek og ret alt på serveren: `verify.sh`
+
+```bash
+./deploy/verify.sh
+```
+
+Svarer ja eller nej på fire spørgsmål og **retter det, der kan rettes**: 1) kører dashboardet 24/7 (starter ved boot, kører som tjeneste, genstarter
+sig selv, opdaterer sig selv), 2) kører alle botter uden problem (med årsagen for dem, der ikke gør), 3) er det uafhængigt af dine enheder (kører på
+serveren under systemd, Tailscale starter ved boot), 4) kan alle komme ind, hvor de end er (Funnel slået til, og adressen svarer). Til sidst skriver det
+adressen. Standard er åbent for alle uden adgangskode; `VERIFY_ACCESS=on` giver adgangskode, `VERIFY_ACCESS=private` kun dine egne enheder.
+`--no-fix` tjekker kun.
+
 ## Mac: "unable to get local issuer certificate"
 
 Python fra python.org leveres uden rod-certifikater, så alle HTTPS-kald fejler, selv om netværket er i orden. Så kan ingen bot hente
