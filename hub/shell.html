@@ -520,15 +520,9 @@ function renderHub(rows) {
   const link = (b) => h("a", { href: "#" + b.key }, b.name);
   const ranked = rows.filter((b) => b.best).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !b.best);
   const live = rows.filter((b) => b.up).length;
-  const withSince = rows.filter((b) => b.since).sort((x, y) => x.since - y.since);
-  const firsts = withSince.map((b) => b.since);
-  const oldest = withSince[0], youngest = withSince[withSince.length - 1];
-  const sinceSub = !oldest ? "ingen data endnu" : withSince.length > 1 && oldest !== youngest
-    ? `ældste: ${oldest.name} · yngste: ${youngest.name} (${dur(Date.now() / 1000 - youngest.since)}). Se alle i tabellen.` : oldest.name;
   view(
     cutBar((rows.find((b) => b.cut) || {}).cut),
     h("div", { class: "grid kpis" },
-      kpi("Ældste bots data", tick(firsts.length ? Math.min(...firsts) : null), sinceSub),
       kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),
       kpi("Botter der scanner", `${rows.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))).length} af ${rows.filter((b) => b.configured).length}`,
         rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${live} kører`),
