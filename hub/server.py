@@ -148,7 +148,7 @@ def bot_overview(bot: dict) -> dict:
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
-    out["scan_age"], out["issue"], out["trades"] = None, "", None
+    out["scan_age"], out["issue"], out["trades"], out["idle"] = None, "", None, ""
     out["note_short"] = "Slået fra her" if bot.get("disabled") else ""
     if not_installed(bot):
         out["configured"], out["up"] = False, False
@@ -160,9 +160,10 @@ def bot_overview(bot: dict) -> dict:
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
+            out["idle"] = data.get("idle") or ""
         except (OSError, ValueError, KeyError, TypeError):
             pass
-        if out["scan_age"] is None or out["scan_age"] > STALE_AFTER_S:
+        if not out["idle"] and (out["scan_age"] is None or out["scan_age"] > STALE_AFTER_S):
             out["issue"] = data.get("problem") or last_problem(bot)
     return out
 

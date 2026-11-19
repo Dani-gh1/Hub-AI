@@ -25,11 +25,15 @@ def bot_dir(bot: dict) -> Path:
     return BOTS_DIR / bot["repo"].split("/")[-1] if bot.get("repo") else BOTS_DIR / bot["key"]
 
 
-def commands(bot: dict) -> list[list[str]]:
-    """Kommandoer der starter botten med dashboard kun på 127.0.0.1:<port> (nogle botter bruger to processer)."""
+def commands(bot: dict) -> list[tuple[list[str], dict]]:
+    """Kommandoer (og ekstra miljøvariabler) der starter botten med dashboard kun på 127.0.0.1:<port>.
+    Nogle botter bruger to processer (dashboard og motor)."""
     ln, port = bot["launch"], bot["port"]
     if ln["kind"] == "flag":
-        return [[sys.executable, "-m", "desk", *[a.format(port=port) for a in ln["args"]]]]
+        return [([sys.executable, "-m", "desk", *[a.format(port=port) for a in ln["args"]]], {})]
+    if ln["kind"] == "env":      # botten læser port og vært fra miljøet (fx DESK_PORT)
+        env = {k: str(v).format(port=port) for k, v in ln.get("env", {}).items()}
+        return [([sys.executable, *ln["args"]], env)]
     out = []
     all_args = [ln["args"], *ln.get("also", [])]
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
@@ -40,7 +44,7 @@ def commands(bot: dict) -> list[list[str]]:
                 "c.DASHBOARD_PORT = %d; c.DASHBOARD_HOST = '127.0.0.1'; "
                 "sys.argv = ['desk'] + %r; runpy.run_module('desk', run_name='__main__')"
                 % (ln["config"], port, args))
-        out.append([sys.executable, "-c", code])
+        out.append(([sys.executable, "-c", code], {}))
     return out
 
 
@@ -84,10 +88,10 @@ def cmd_run(bots, host: str, port: int) -> None:
         if not b.get("repo") or not d.exists() or "launch" not in b:
             print(f"· springer {b['name']} over (ikke installeret)")
             continue
-        for i, cmd in enumerate(commands(b)):
+        for i, (cmd, env) in enumerate(commands(b)):
             units.append(Unit(b["key"], b["name"] if i == 0 else f"{b['name']} (motor)", cmd, d, b["port"] if i == 0 else None,
                               None if i == 0 else f"{b['key']}-motor",
-                              health=(lambda b=b: scan_age(b)) if i == 0 else None))
+                              health=(lambda b=b: scan_age(b)) if i == 0 else None, env=env or None))
     sup = Supervisor(units, Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs")), port_open)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     sup.start_thread()                       # botterne starter i baggrunden, så hubben svarer med det samme

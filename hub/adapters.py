@@ -309,7 +309,53 @@ def nova(get):
             "scan": ts((stat.get("last_scan") or {}).get("ts")) or ts(stat.get("last_event_ts"))}
 
 
-ADAPTERS = {"forex": forex, "delphi": delphi, "quasar": quasar, "orion": orion, "comet": comet, "nova": nova}
+def stocks(get):
+    """Atlas: amerikanske aktier og ETF'er. Handler kun, mens NYSE er åben; ellers sover botten (det er ikke en fejl)."""
+    st = get("/api/strategies")
+    ru = get("/api/rules")
+    stat = get("/api/status")
+    tr = get("/api/trades")
+    ov = get("/api/overview")
+    rules = {r["label"]: r for r in ru.get("strategies", [])}
+    names = [("entry", "Indgang"), ("exit", "Udgang"), ("signals", "Signaler"), ("min_score", "Min. score"), ("position_pct", "Position (% af konto)"),
+             ("max_positions", "Maks. åbne positioner"), ("atr_stop", "Stop (× ATR)"), ("atr_trail", "Trailing (× ATR)"),
+             ("max_hold_days", "Maks. holdetid (handelsdage)"), ("take_profit_atr", "Gevinstmål (× ATR)"), ("universe", "Univers"),
+             ("spy_filter", "Kræver SPY i optrend")]
+    strategies = []
+    for s in st.get("strategies", []):
+        r = rules.get(s["label"], {})
+        rr = [[lab, fmt(r[k])] for k, lab in names if r.get(k) not in (None, "")]
+        strategies.append({"key": s["name"], "name": s["label"], "group": "", "description": s.get("description", ""),
+                           "return_pct": num(s.get("return_pct")), "trades": s.get("trades", 0), "win_rate": s.get("win_rate"),
+                           "open": s.get("open", 0), "max_dd": num(abs(s.get("max_dd") or 0)),
+                           "curve": points(s.get("series")), "rules": rr})
+    meta = stat.get("meta") or {}
+    regular = stat.get("session") == "regular"
+    stats = meta.get("last_cycle_stats") or {}
+    sections = [{"title": "Marked", "rows": [["Status", stat.get("label", "–")], ["Nu i New York", stat.get("now_et", "–")], ["Nu i Danmark", stat.get("now_dk", "–")],
+                                              ["Næste åbning (dansk tid)", stat.get("next_open_dk", "–")], ["Næste lukning (dansk tid)", stat.get("next_close_dk") or "–"],
+                                              ["Helligdag", stat.get("holiday") or "nej"]]},
+                {"title": "Seneste cyklus", "rows": [["Aktier set", stats.get("symbols", "–")], ["Kandidater", stats.get("candidates", "–")],
+                                                      ["Bestod filter", stats.get("passed", "–")], ["Scoret", stats.get("scored", "–")],
+                                                      ["Køb", stats.get("buys", "–")], ["Salg", stats.get("sells", "–")]]}]
+    sections += [{"title": g["title"], "rows": [[i["label"], fmt(i["value"])] for i in g.get("items", []) if i.get("value") is not None]}
+                 for g in ru.get("groups", [])]
+    events = [[e.get("ts", "")[:19].replace("T", " "), f"{e.get('agent', '')}: {e.get('message', '')}"[:110]] for e in (ov.get("events") or [])[:8]]
+    if events:
+        sections.append({"title": "Seneste hændelser", "rows": events})
+    desk = {"kpis": [["Marked", stat.get("label", "–")], ["Næste åbning", stat.get("next_open_dk", "–")], ["Epoch", stat.get("epoch", "–")], ["Regelsæt", len(strategies)]],
+            "sections": sections}
+    opened = [trade_row(p.get("strategy"), p.get("symbol"), "long", p.get("opened"), p.get("unreal_pct"), f"{p.get('weight_pct', 0):.1f} % af konto".replace(".", ",")) for p in tr.get("positions", [])]
+    closed = [trade_row(c.get("strategy"), c.get("symbol"), "long", c.get("ts"), c.get("pnl_pct"), c.get("reason", ""))
+              for c in tr.get("closed", []) if c.get("pnl_pct") is not None]
+    out = {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
+           "scan": ts(meta.get("last_cycle")) if regular else None}
+    if not regular:       # børsen er lukket: botten sover med vilje, så der er hverken noget at scanne eller noget at genstarte
+        out["idle"] = f"{stat.get('label', 'Børsen er lukket')}. Åbner {stat.get('next_open_dk', '–')} (dansk tid)."
+    return out
+
+
+ADAPTERS = {"stocks": stocks, "forex": forex, "delphi": delphi, "quasar": quasar, "orion": orion, "comet": comet, "nova": nova}
 
 
 def normalize(bot: dict, fetch) -> dict:

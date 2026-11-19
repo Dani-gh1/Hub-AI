@@ -5,7 +5,7 @@ Kun papirhandel med fiktive penge.
 
 | Fane | Repo |
 |---|---|
-| Atlas AI (forex) | Dani-gh1/Atlas |
+| Atlas AI (aktier) | Dani-gh1/Atlas |
 | Meridian AI (forex) | Dani-gh1/Meridian-AI |
 | Comet AI (nye tokens) | Dani-gh1/Comet-AI |
 | Delphi AI (prognosemarkeder) | Dani-gh1/Delphi-AI |
@@ -133,8 +133,10 @@ seneste fejllinje under hver bot.
 
 Alle botter kan scanne markedet uden nøgler eller opsætning:
 
-* **Atlas og Meridian** (forex og råvarer) bruger Yahoo Finance, hvis ingen nøgle er sat. Sæt `OANDA_TOKEN` i
-  `/etc/hub.env` (Mac: `~/Library/Application Support/Hub AI/hub.env`) for rigtig bid/ask fra OANDA. Så skifter de selv.
+* **Atlas** (amerikanske aktier og ETF'er) bruger Yahoo Finance, Nasdaq og Wikipedia uden nøgler. Den handler kun, mens NYSE er åben (15:30–22:00
+  dansk tid på hverdage) og sover ellers. Det er ikke en fejl, og oversigten viser "Venter på børsen" med næste åbning.
+* **Meridian** (forex og råvarer) bruger Yahoo Finance, hvis ingen nøgle er sat. Sæt `OANDA_TOKEN` i
+  `/etc/hub.env` (Mac: `~/Library/Application Support/Hub AI/hub.env`) for rigtig bid/ask fra OANDA. Så skifter den selv.
 * **Quasar** (krypto-futures) prøver Binance og skifter selv til Bybit, hvis Binance er spærret i dit land eller hos din
   server-udbyder.
 * Overblikket viser for hver bot, hvornår den **sidst scannede**. Står en bot stille i 20 minutter, vises "Scanner ikke",

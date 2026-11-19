@@ -44,6 +44,7 @@ class Unit:
     log_file: object = field(default=None, repr=False)
     health: object = field(default=None, repr=False)      # () -> sekunder siden seneste scanning (eller None)
     next_health: float = 0.0
+    env: dict | None = field(default=None, repr=False)      # ekstra miljøvariabler til denne bot
 
 
 class Supervisor:
@@ -71,7 +72,8 @@ class Supervisor:
                 pass
         u.log_file = self._open_log(u)
         u.log_file.write(f"\n--- start {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n".encode())
-        u.proc = self.popen(u.cmd, cwd=u.cwd, stdout=u.log_file, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        kw = {"env": {**os.environ, **u.env}} if u.env else {}
+        u.proc = self.popen(u.cmd, cwd=u.cwd, stdout=u.log_file, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **kw)
         u.started = u.last_ok = self.now()
         u.port_wait_since = None
 

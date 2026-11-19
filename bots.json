@@ -5,20 +5,25 @@
    "name": "Atlas AI",
    "repo": "Dani-gh1/Atlas",
    "port": 8801,
-   "desc": "Papirdesk",
+   "desc": "Aktier og ETF'er",
    "launch": {
-    "kind": "patch",
-    "config": "desk.config",
+    "kind": "env",
     "args": [
-     "run"
-    ]
+     "bot.py"
+    ],
+    "env": {
+     "DESK_PORT": "{port}",
+     "DESK_HOST": "127.0.0.1"
+    }
    },
-   "hide": "nav[role=tablist]",
-   "short": "forex",
-   "invests": "Forex og råvarer (EUR/USD, guld, olie)",
-   "adapter": "forex",
+   "short": "aktier",
+   "invests": "Amerikanske aktier og ETF'er (S&P 500)",
+   "adapter": "stocks",
    "hosts": [
-    "query1.finance.yahoo.com"
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
    ]
   },
   {

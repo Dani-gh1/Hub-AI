@@ -444,9 +444,9 @@ function vStrategierList(box) {   // kun listen opdateres under søgning, så fe
 /* ---------- DESK ---------- */
 function vDesk() {
   const d = DATA.desk, b = bot();
-  const age = DATA.scan ? Math.max(0, Date.now() / 1000 - DATA.scan) : null;
+  const age = DATA.scan ? Math.max(0, Date.now() / 1000 - DATA.scan) : null, idle = DATA.idle;
   view(
-    h("div", { class: "grid kpis" }, kpi("Seneste scanning", ago(age), age == null ? "botten oplyser det ikke" : age > STALE ? "scanner ikke lige nu" : "scanner løbende", age != null && age > STALE ? "neg" : ""),
+    h("div", { class: "grid kpis" }, idle ? kpi("Seneste scanning", "Børsen er lukket", idle) : kpi("Seneste scanning", ago(age), age == null ? "botten oplyser det ikke" : age > STALE ? "scanner ikke lige nu" : "scanner løbende", age != null && age > STALE ? "neg" : ""),
       d.kpis.map(([l, v]) => kpi(l, String(v)))),
     h("div", { class: "sections" }, d.sections.filter((s) => s.rows.length).map((s) => h("section", { class: "card" }, h("h2", {}, s.title),
       h("div", { class: "kvs" }, s.rows.map(([a, c]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, c === "" ? "" : String(c)))))))),
@@ -486,7 +486,7 @@ function renderHub(rows) {
   view(
     h("div", { class: "grid kpis" },
       kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),
-      kpi("Botter der scanner", `${rows.filter((b) => b.up && b.scan_age != null && b.scan_age <= STALE).length} af ${rows.filter((b) => b.configured).length}`,
+      kpi("Botter der scanner", `${rows.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))).length} af ${rows.filter((b) => b.configured).length}`,
         rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${live} kører`),
       kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct))),
     h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Kører de?"), h("p", {}, "Status for alle botter lige nu")),
@@ -494,13 +494,13 @@ function renderHub(rows) {
         h("th", { class: "hide-m" }, "Seneste scanning"), h("th", { class: "hide-m" }, "Handler"),
         h("th", { class: "n" }, h("span", { class: "hide-m" }, "Strategier i plus"), h("span", { class: "under" }, "I plus")))),
         h("tbody", {}, rows.map((b) => {
-          const stale = b.up && b.scan_age != null && b.scan_age > STALE;
-          const text = !b.configured ? (b.note_short || (b.note ? "Ikke tilgængelig" : "Ikke koblet på")) : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : stale ? "Scanner ikke" : b.scan_age == null ? "Kører" : "Scanner";
+          const stale = b.up && !b.idle && b.scan_age != null && b.scan_age > STALE;
+          const text = !b.configured ? (b.note_short || (b.note ? "Ikke tilgængelig" : "Ikke koblet på")) : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : b.idle ? "Venter på børsen" : stale ? "Scanner ikke" : b.scan_age == null ? "Kører" : "Scanner";
           const dot = !b.configured ? "" : !b.up ? "down" : stale ? "warn" : "up";
           return h("tr", {}, h("td", { class: "name" }, link(b), h("span", { class: "under" }, b.invests || "")), h("td", { class: "hide-m" }, b.invests || "–"),
             h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + dot }), text), h("span", { class: "under" }, b.up ? "Scannet " + ago(b.scan_age) + (b.trades ? " · " + (b.trades.open + b.trades.closed ? `${b.trades.open} åbne, ${b.trades.closed} lukkede` : "ingen handler endnu") : "") : ""),
-              b.issue || (b.note && !b.configured) ? h("div", { class: "issue", title: b.issue || b.note }, b.issue || b.note) : null),
-            h("td", { class: "hide-m " + (stale ? "neg" : "mute") }, b.up ? ago(b.scan_age) : "–"),
+              (b.idle || b.issue || (b.note && !b.configured)) ? h("div", { class: "issue", title: b.idle || b.issue || b.note }, b.idle || b.issue || b.note) : null),
+            h("td", { class: "hide-m " + (stale ? "neg" : "mute") }, b.up ? (b.idle ? "børsen er lukket" : ago(b.scan_age)) : "–"),
             h("td", { class: "hide-m" }, b.trades ? (b.trades.open + b.trades.closed ? `${b.trades.open} åbne · ${b.trades.closed} lukkede` : "Ingen endnu") : "–"),
             h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));
         }))))),
