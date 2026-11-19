@@ -382,6 +382,878 @@
     "fee_pct": 0.3,
     "slip_pct": 0.5
    }
+  },
+  {
+   "key": "bondai",
+   "name": "Bond AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8811,
+   "desc": "Obligationer og renter",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-bondai",
+     "DESK_STATE_FILE": "state-bondai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "INDEX_SYMBOL": "AGG",
+      "TOP_ETFS": [
+       "TLT",
+       "IEF",
+       "SHY",
+       "AGG",
+       "BND",
+       "LQD",
+       "HYG",
+       "JNK",
+       "TIP",
+       "EMB",
+       "BNDX",
+       "MUB",
+       "VCSH",
+       "VCIT",
+       "VCLT",
+       "GOVT",
+       "BIL",
+       "IEI",
+       "SCHZ",
+       "MBB",
+       "SHV",
+       "IGSB",
+       "BSV",
+       "SPTL",
+       "TLH",
+       "BWX",
+       "EMLC"
+      ]
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {}
+     }
+    }
+   },
+   "short": "obligationer",
+   "invests": "Statsobligationer, virksomhedsobligationer og rente-ETF'er (TLT, IEF, AGG, LQD, HYG m.fl.)",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.05
+   }
+  },
+  {
+   "key": "metalai",
+   "name": "Metal AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8812,
+   "desc": "Guld, sølv og metaller",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-metalai",
+     "DESK_STATE_FILE": "state-metalai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "INDEX_SYMBOL": "GLD",
+      "TOP_ETFS": [
+       "GLD",
+       "IAU",
+       "SLV",
+       "PPLT",
+       "PALL",
+       "CPER",
+       "GDX",
+       "GDXJ",
+       "SIL",
+       "SLVP",
+       "COPX",
+       "XME",
+       "REMX",
+       "PICK",
+       "URA"
+      ]
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {
+       "Materials": "NEM GOLD FCX SCCO AEM WPM FNV RGLD HL CDE PAAS AG KGC AU GFI SBSW MP"
+      }
+     }
+    }
+   },
+   "short": "metaller",
+   "invests": "Guld, sølv, kobber, platin og minefirmaer (GLD, SLV, COPX, GDX, NEM m.fl.)",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.1
+   }
+  },
+  {
+   "key": "energiai",
+   "name": "Energi AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8813,
+   "desc": "Olie, gas, uran og energi",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-energiai",
+     "DESK_STATE_FILE": "state-energiai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "INDEX_SYMBOL": "XLE",
+      "TOP_ETFS": [
+       "XLE",
+       "XOP",
+       "OIH",
+       "USO",
+       "UNG",
+       "URA",
+       "URNM",
+       "ICLN",
+       "TAN",
+       "AMLP",
+       "VDE",
+       "FCG"
+      ]
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {
+       "Energy": "XOM CVX COP EOG SLB OXY PSX MPC VLO HAL DVN FANG CCJ UEC LNG KMI WMB OKE EQT CTRA APA BKR",
+       "Utilities": "CEG VST NRG"
+      }
+     }
+    }
+   },
+   "short": "energi",
+   "invests": "Olie, gas, uran og energiaktier (XOM, CVX, SLB, CCJ, USO, URA m.fl.)",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.08
+   }
+  },
+  {
+   "key": "temaai",
+   "name": "Tema AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8814,
+   "desc": "Temaer: AI, forsvar, grøn energi, biotek",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-temaai",
+     "DESK_STATE_FILE": "state-temaai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "INDEX_SYMBOL": "QQQ",
+      "TOP_ETFS": [
+       "SMH",
+       "SOXX",
+       "BOTZ",
+       "ROBO",
+       "ARKK",
+       "ARKG",
+       "ARKQ",
+       "ITA",
+       "XAR",
+       "PPA",
+       "ICLN",
+       "TAN",
+       "LIT",
+       "DRIV",
+       "HACK",
+       "CIBR",
+       "IBB",
+       "XBI",
+       "DRNZ",
+       "CLOU",
+       "WCLD"
+      ]
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {
+       "Information Technology": "NVDA PLTR PANW CRWD NET DDOG SNOW AMD AVGO TSM ANET FTNT ZS",
+       "Industrials": "LMT RTX NOC GD LHX AVAV KTOS RKLB HII TDG",
+       "Utilities": "FSLR ENPH NEE",
+       "Health Care": "ISRG VRTX MRNA CRSP REGN BIIB"
+      }
+     }
+    }
+   },
+   "short": "temaer",
+   "invests": "Aktier og ETF'er inden for AI, forsvar, grøn energi, cybersikkerhed, droner og biotek",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.1
+   }
+  },
+  {
+   "key": "smallcapai",
+   "name": "Small Cap AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8815,
+   "desc": "Små amerikanske aktier",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-smallcapai",
+     "DESK_STATE_FILE": "state-smallcapai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "INDEX_SYMBOL": "IWM",
+      "TOP_ETFS": [
+       "IWM",
+       "IJR",
+       "VB",
+       "VTWO",
+       "IWO",
+       "IWN",
+       "SLYG",
+       "SCHA",
+       "VBR",
+       "IJT"
+      ]
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {
+       "Health Care": "ENSG LNTH GKOS INSP PRGO",
+       "Consumer Discretionary": "BOOT ANF CROX ELF SHAK WING FIVE MTH",
+       "Industrials": "KTOS AIT BMI FELE ATKR MLI IBP EXPO",
+       "Information Technology": "AEIS CVLT QLYS RMBS SPSC",
+       "Financials": "ONB CALM",
+       "Energy": "SM MUR PTEN CIVI",
+       "Materials": "AMR ARCH HCC CENX"
+      }
+     }
+    }
+   },
+   "short": "småaktier",
+   "invests": "Små og mellemstore amerikanske aktier (Russell 2000/S&P 600) og ETF'er som IWM og IJR",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.2
+   }
+  },
+  {
+   "key": "udbytteai",
+   "name": "Udbytte AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8816,
+   "desc": "Aktier med stabilt udbytte",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-udbytteai",
+     "DESK_STATE_FILE": "state-udbytteai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "INDEX_SYMBOL": "SCHD",
+      "TOP_ETFS": [
+       "SCHD",
+       "VIG",
+       "VYM",
+       "DVY",
+       "HDV",
+       "NOBL",
+       "SDY",
+       "DGRO",
+       "SPYD",
+       "DIVO"
+      ]
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {
+       "Consumer Staples": "KO PEP PG MO PM CL KMB GIS",
+       "Health Care": "JNJ ABBV MRK PFE AMGN",
+       "Industrials": "MMM CAT HON UPS",
+       "Communication Services": "VZ T",
+       "Real Estate": "O PLD WPC",
+       "Consumer Discretionary": "MCD HD LOW",
+       "Energy": "XOM CVX",
+       "Financials": "JPM BLK TROW",
+       "Utilities": "DUK SO D"
+      }
+     }
+    }
+   },
+   "short": "udbytte",
+   "invests": "Aktier og ETF'er med stabilt og stigende udbytte (SCHD, VIG, KO, PEP, JNJ, O m.fl.)",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.05
+   }
+  },
+  {
+   "key": "danskai",
+   "name": "Dansk AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8817,
+   "desc": "Danske aktier",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-danskai",
+     "DESK_STATE_FILE": "state-danskai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "INDEX_SYMBOL": "EDEN",
+      "TOP_ETFS": [
+       "EDEN"
+      ]
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {
+       "Health Care": "NVO GMAB CLPBY",
+       "Industrials": "AMKBY DSDVY VWDRY",
+       "Utilities": "DNNGY",
+       "Consumer Staples": "CABGY",
+       "Consumer Discretionary": "PANDY",
+       "Financials": "DNKEY",
+       "Communication Services": "GNNDY"
+      }
+     }
+    }
+   },
+   "short": "danske aktier",
+   "invests": "Danske selskaber, handlet som amerikanske ADR'er og i ETF'en EDEN (Novo, Ørsted, Vestas, Mærsk, DSV m.fl.)",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.2,
+    "slip_pct": 0.6
+   }
+  },
+  {
+   "key": "regnskabai",
+   "name": "Regnskab AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8818,
+   "desc": "Aktier efter regnskaber",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-regnskabai",
+     "DESK_STATE_FILE": "state-regnskabai.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": true,
+      "EARNINGS_BLACKOUT_DAYS": 0
+     },
+     "desk.strategies": {
+      "-STRATEGIES": [
+       "baseline",
+       "momentum",
+       "mean_reversion",
+       "dip_uptrend",
+       "picky",
+       "aggressive",
+       "many_small",
+       "trend_follow",
+       "rs_leaders",
+       "low_vol",
+       "etf_rotation",
+       "market_filter"
+      ]
+     }
+    }
+   },
+   "short": "regnskaber",
+   "invests": "S&P 500-aktier, der reagerer kraftigt (gap og volumen), fx lige efter regnskaber",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.1
+   }
+  },
+  {
+   "key": "stakingai",
+   "name": "Staking AI",
+   "repo": "Dani-gh1/Orion-AI",
+   "port": 8819,
+   "desc": "Krypto med staking",
+   "launch": {
+    "kind": "patch",
+    "config": "config",
+    "args": [
+     "run"
+    ],
+    "overrides": {
+     "config": {
+      "SCOUT_MIN_QUOTE_VOLUME_24H": 500000,
+      "SCOUT_MAX_SYMBOLS": 30,
+      "FILTER_MAX_SPREAD_PCT": 0.15,
+      "FILTER_MIN_DEPTH_USDT": 60000,
+      "FILTER_MAX_MOVE_1H_PCT": 6.0,
+      "FALLBACK_SLIPPAGE_PCT": 0.1,
+      "-STRATEGIES": [
+       "majors",
+       "hold_btc"
+      ],
+      "STATE_FILE": "state-stakingai.json",
+      "DB_FILE": "desk-stakingai.sqlite3",
+      "DATA_DIR": "data-stakingai"
+     }
+    },
+    "only_bases": [
+     "ETH",
+     "SOL",
+     "ADA",
+     "DOT",
+     "ATOM",
+     "AVAX",
+     "NEAR",
+     "TIA",
+     "INJ",
+     "SEI",
+     "TRX",
+     "ALGO",
+     "XTZ",
+     "EGLD",
+     "KAVA",
+     "FLOW"
+    ]
+   },
+   "hide": "#tabs",
+   "short": "staking",
+   "invests": "Kryptovalutaer med staking: ETH, SOL, ADA, DOT, ATOM, AVAX, NEAR, TIA m.fl.",
+   "adapter": "orion",
+   "hosts": [
+    "data-api.binance.vision",
+    "api.binance.com"
+   ],
+   "costs": {
+    "fee_pct": 0.1,
+    "slip_pct": 0.1
+   }
+  },
+  {
+   "key": "defiai",
+   "name": "DeFi AI",
+   "repo": "Dani-gh1/Orion-AI",
+   "port": 8820,
+   "desc": "DeFi-tokens",
+   "launch": {
+    "kind": "patch",
+    "config": "config",
+    "args": [
+     "run"
+    ],
+    "overrides": {
+     "config": {
+      "SCOUT_MIN_QUOTE_VOLUME_24H": 500000,
+      "SCOUT_MAX_SYMBOLS": 30,
+      "FILTER_MAX_SPREAD_PCT": 0.2,
+      "FILTER_MIN_DEPTH_USDT": 40000,
+      "FILTER_MAX_MOVE_1H_PCT": 6.0,
+      "FALLBACK_SLIPPAGE_PCT": 0.15,
+      "-STRATEGIES": [
+       "majors",
+       "hold_btc"
+      ],
+      "STATE_FILE": "state-defiai.json",
+      "DB_FILE": "desk-defiai.sqlite3",
+      "DATA_DIR": "data-defiai"
+     }
+    },
+    "only_bases": [
+     "AAVE",
+     "UNI",
+     "MKR",
+     "CRV",
+     "COMP",
+     "SNX",
+     "LDO",
+     "PENDLE",
+     "DYDX",
+     "1INCH",
+     "SUSHI",
+     "CAKE",
+     "JUP",
+     "RUNE",
+     "GMX",
+     "ENA"
+    ]
+   },
+   "hide": "#tabs",
+   "short": "DeFi",
+   "invests": "DeFi-tokens: AAVE, UNI, MKR, CRV, COMP, LDO, PENDLE, DYDX, JUP m.fl.",
+   "adapter": "orion",
+   "hosts": [
+    "data-api.binance.vision",
+    "api.binance.com"
+   ],
+   "costs": {
+    "fee_pct": 0.1,
+    "slip_pct": 0.15
+   }
+  },
+  {
+   "key": "aitokenai",
+   "name": "AI-token AI",
+   "repo": "Dani-gh1/Orion-AI",
+   "port": 8821,
+   "desc": "Krypto med AI-tema",
+   "launch": {
+    "kind": "patch",
+    "config": "config",
+    "args": [
+     "run"
+    ],
+    "overrides": {
+     "config": {
+      "SCOUT_MIN_QUOTE_VOLUME_24H": 500000,
+      "SCOUT_MAX_SYMBOLS": 30,
+      "FILTER_MAX_SPREAD_PCT": 0.2,
+      "FILTER_MIN_DEPTH_USDT": 40000,
+      "FILTER_MAX_MOVE_1H_PCT": 6.0,
+      "FALLBACK_SLIPPAGE_PCT": 0.2,
+      "-STRATEGIES": [
+       "majors",
+       "hold_btc"
+      ],
+      "STATE_FILE": "state-aitokenai.json",
+      "DB_FILE": "desk-aitokenai.sqlite3",
+      "DATA_DIR": "data-aitokenai"
+     }
+    },
+    "only_bases": [
+     "FET",
+     "RENDER",
+     "TAO",
+     "WLD",
+     "ARKM",
+     "NEAR",
+     "GRT",
+     "IO",
+     "VIRTUAL",
+     "AIXBT"
+    ]
+   },
+   "hide": "#tabs",
+   "short": "AI-tokens",
+   "invests": "AI-tokens: FET, RENDER, TAO, WLD, ARKM, NEAR, GRT m.fl.",
+   "adapter": "orion",
+   "hosts": [
+    "data-api.binance.vision",
+    "api.binance.com"
+   ],
+   "costs": {
+    "fee_pct": 0.1,
+    "slip_pct": 0.2
+   }
+  },
+  {
+   "key": "valutaai",
+   "name": "Valuta AI",
+   "repo": "Dani-gh1/Meridian-AI",
+   "port": 8822,
+   "desc": "Valutapar inkl. nye markeder",
+   "launch": {
+    "kind": "patch",
+    "config": "desk.config",
+    "args": [
+     "run"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "var-valuta"
+    },
+    "overrides": {
+     "desk.config": {
+      "-INSTRUMENTS": [
+       "XAU_USD",
+       "XAG_USD",
+       "WTICO_USD",
+       "BCO_USD"
+      ],
+      "+INSTRUMENTS": {
+       "EUR_CHF": [
+        "fx",
+        0.0001,
+        1.5,
+        20
+       ],
+       "EUR_AUD": [
+        "fx",
+        0.0001,
+        2.0,
+        20
+       ],
+       "AUD_JPY": [
+        "fx",
+        0.01,
+        2.0,
+        20
+       ],
+       "NZD_JPY": [
+        "fx",
+        0.01,
+        2.5,
+        20
+       ],
+       "CHF_JPY": [
+        "fx",
+        0.01,
+        2.5,
+        20
+       ],
+       "GBP_CHF": [
+        "fx",
+        0.0001,
+        2.5,
+        20
+       ],
+       "EUR_NOK": [
+        "fx",
+        0.0001,
+        25.0,
+        10
+       ],
+       "EUR_SEK": [
+        "fx",
+        0.0001,
+        20.0,
+        10
+       ],
+       "USD_NOK": [
+        "fx",
+        0.0001,
+        25.0,
+        10
+       ],
+       "USD_SEK": [
+        "fx",
+        0.0001,
+        20.0,
+        10
+       ],
+       "USD_MXN": [
+        "fx",
+        0.0001,
+        60.0,
+        10
+       ],
+       "USD_ZAR": [
+        "fx",
+        0.0001,
+        150.0,
+        10
+       ],
+       "USD_TRY": [
+        "fx",
+        0.0001,
+        300.0,
+        5
+       ],
+       "USD_BRL": [
+        "fx",
+        0.0001,
+        60.0,
+        10
+       ],
+       "USD_INR": [
+        "fx",
+        0.01,
+        5.0,
+        10
+       ]
+      },
+      "+YAHOO_SYMBOLS": {
+       "EUR_CHF": "EURCHF=X",
+       "EUR_AUD": "EURAUD=X",
+       "AUD_JPY": "AUDJPY=X",
+       "NZD_JPY": "NZDJPY=X",
+       "CHF_JPY": "CHFJPY=X",
+       "GBP_CHF": "GBPCHF=X",
+       "EUR_NOK": "EURNOK=X",
+       "EUR_SEK": "EURSEK=X",
+       "USD_NOK": "USDNOK=X",
+       "USD_SEK": "USDSEK=X",
+       "USD_MXN": "USDMXN=X",
+       "USD_ZAR": "USDZAR=X",
+       "USD_TRY": "USDTRY=X",
+       "USD_BRL": "USDBRL=X",
+       "USD_INR": "USDINR=X"
+      },
+      "+INSTRUMENT_SESSIONS": {
+       "EUR_CHF": [
+        "london",
+        "newyork"
+       ],
+       "EUR_AUD": [
+        "london",
+        "newyork"
+       ],
+       "AUD_JPY": [
+        "asia",
+        "london"
+       ],
+       "NZD_JPY": [
+        "asia",
+        "london"
+       ],
+       "CHF_JPY": [
+        "asia",
+        "london"
+       ],
+       "GBP_CHF": [
+        "london",
+        "newyork"
+       ],
+       "EUR_NOK": [
+        "london",
+        "newyork"
+       ],
+       "EUR_SEK": [
+        "london",
+        "newyork"
+       ],
+       "USD_NOK": [
+        "london",
+        "newyork"
+       ],
+       "USD_SEK": [
+        "london",
+        "newyork"
+       ],
+       "USD_MXN": [
+        "newyork"
+       ],
+       "USD_ZAR": [
+        "london",
+        "newyork"
+       ],
+       "USD_TRY": [
+        "london",
+        "newyork"
+       ],
+       "USD_BRL": [
+        "newyork"
+       ],
+       "USD_INR": [
+        "london",
+        "newyork"
+       ]
+      },
+      "+POLICY_RATES": {
+       "NOK": 4.0,
+       "SEK": 2.0,
+       "MXN": 7.0,
+       "ZAR": 7.0,
+       "TRY": 40.0,
+       "BRL": 14.5,
+       "INR": 5.5
+      }
+     }
+    }
+   },
+   "hide": "nav[role=tablist]",
+   "short": "valuta",
+   "invests": "Rene valutapar: majors, krydskurser og nye markeder (MXN, ZAR, TRY, BRL, INR, NOK, SEK)",
+   "adapter": "forex",
+   "hosts": [
+    "query1.finance.yahoo.com"
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.04
+   }
   }
  ]
 }

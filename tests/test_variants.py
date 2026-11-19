@@ -33,5 +33,34 @@ class VariantTests(unittest.TestCase):
             self.assertEqual(out.stdout.strip(), "['A', 'B'] ['y'] 2 9", out.stderr)
 
 
+class EveryVariantTests(unittest.TestCase):
+    """Hver variant skal kunne få sine indstillinger lagt ind i den hentede botkode, uden at noget fejler (springes over uden kode)."""
+
+    def test_overrides_apply_to_the_real_bot_code(self):
+        import os
+        from hub.__main__ import bot_dir
+        checked = 0
+        for b in load_bots():
+            if "overrides" not in b.get("launch", {}) or not b.get("repo") or not bot_dir(b).exists():
+                continue
+            cmd, env = commands(b)[0]
+            code = cmd[2].split("sys.argv")[0] + "print('ok')"
+            r = subprocess.run([sys.executable, "-c", code], cwd=bot_dir(b), capture_output=True, text=True, env={**os.environ, **env}, timeout=60)
+            self.assertEqual(r.stdout.strip(), "ok", f"{b['key']}: {r.stderr[-300:]}")
+            checked += 1
+        if not checked:
+            self.skipTest("botkoden er ikke hentet her")
+
+    def test_every_bot_has_unique_state_files(self):
+        seen = {}
+        for b in load_bots():
+            ln = b.get("launch", {})
+            files = [ln.get("env", {}).get("DESK_STATE_FILE"), ln.get("env", {}).get("DESK_DATA_DIR"),
+                     (ln.get("overrides", {}).get("config") or {}).get("STATE_FILE")]
+            for f in filter(None, files):
+                self.assertNotIn((b["repo"], f), seen, f"{b['key']} deler fil med {seen.get((b['repo'], f))}")
+                seen[(b["repo"], f)] = b["key"]
+
+
 if __name__ == "__main__":
     unittest.main()

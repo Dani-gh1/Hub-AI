@@ -56,10 +56,17 @@ PATCH_PRELUDE = (
     "    m = importlib.import_module(mod)\n"
     "    for k, v in attrs.items():\n"
     "        n = k.lstrip('+-'); old = getattr(m, n, None)\n"
-    "        if k[0] == '+': v = type(old)([*old, *v]) if not isinstance(old, (set, frozenset)) else old | set(v)\n"
-    "        elif k[0] == '-': v = [x for x in old if (x.get('name') if isinstance(x, dict) else x) not in v]\n"
+    "        nm = lambda x: x.get('name') if isinstance(x, dict) else getattr(x, 'name', x)\n"
+    "        if k[0] == '+': v = {**old, **v} if isinstance(old, dict) else old | set(v) if isinstance(old, (set, frozenset)) else type(old)([*old, *v])\n"
+    "        elif k[0] == '-': v = {a: b for a, b in old.items() if a not in v} if isinstance(old, dict) else [x for x in old if nm(x) not in v]\n"
     "        elif isinstance(old, (set, frozenset, tuple)) and isinstance(v, list): v = type(old)(v)\n"
     "        setattr(m, n, v)\n")
+ONLY_BASES = (
+    "ONLY = set(%r)\n"
+    "from desk.agents import scout as _sc\n"
+    "_old = _sc.Scout.select\n"
+    "def _sel(self, t): return _old(self, [x for x in t if str(x.get('symbol', '')).endswith(self.cfg.QUOTE) and x['symbol'][:-len(self.cfg.QUOTE)] in ONLY])\n"
+    "_sc.Scout.select = _sel\n")
 
 
 def commands(bot: dict) -> list[tuple[list[str], dict]]:
@@ -83,7 +90,7 @@ def commands(bot: dict) -> list[tuple[list[str], dict]]:
         all_args = [ln["fallback_args"]]   # fx kun dashboardet, når datakildens nøgle mangler
         print(f"· {bot['name']}: {ln['needs_env']} er ikke sat – viser kun dashboardet (ingen live handler)")
     for args in all_args:
-        code = PATCH_PRELUDE % (ln["config"], port, ln.get("overrides", {})) + \
+        code = PATCH_PRELUDE % (ln["config"], port, ln.get("overrides", {})) + (ONLY_BASES % (ln["only_bases"],) if ln.get("only_bases") else "") + \
             "sys.argv = ['desk'] + %r\nrunpy.run_module('desk', run_name='__main__')" % (args,)
         out.append(([sys.executable, "-c", code], env))
     return out

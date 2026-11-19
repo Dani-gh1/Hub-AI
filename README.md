@@ -1,6 +1,6 @@
 # Papirdesk Hub
 
-Én app med ti faner – én pr. papirhandels-bot – og underfaner under hver bot.
+Én app med 22 faner – én pr. papirhandels-bot – og underfaner under hver bot.
 Kun papirhandel med fiktive penge.
 
 | Fane | Repo |
@@ -15,6 +15,9 @@ Kun papirhandel med fiktive penge.
 | Atlas Global AI (udenlandske aktier og ETF'er) | Dani-gh1/Atlas (egen bog, `bots.json`) |
 | Orion Mid AI (mellemstore og små krypto) | Dani-gh1/Orion-AI (egen bog) |
 | Nova Classic AI (etablerede memecoins) | Dani-gh1/Coins (`variants/nova-classic.toml`) |
+| Bond AI, Metal AI, Energi AI, Tema AI, Small Cap AI, Udbytte AI, Dansk AI, Regnskab AI | Dani-gh1/Atlas (hver sin bog og univers) |
+| Staking AI, DeFi AI, AI-token AI | Dani-gh1/Orion-AI (hver sin bog og liste af mønter) |
+| Valuta AI (valutapar inkl. nye markeder) | Dani-gh1/Meridian-AI (egen bog) |
 
 Hver bot har de samme fire sider, så alt ser ens ud:
 
