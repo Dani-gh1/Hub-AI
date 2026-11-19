@@ -71,6 +71,9 @@ Nova slås fra på en Mac, så der ikke opstår en anden papirkonto; sæt `HUB_E
   hubben vise den. Den får også opdateringer og genstart ved nye versioner.
 * Logs for hver bot: `logs/<bot>.log` (roteres ved 5 MB). Hubbens: `sudo journalctl -u hub -f`.
 
+**Adgangskode til dashboardet:** slå den fra eller til med `./deploy/password.sh off` (ingen adgangskode), `local` (ingen adgangskode, kun
+denne maskine), `on` (ny adgangskode) eller `show`. Scriptet genstarter hubben.
+
 Indstillinger ligger i `/etc/hub.env` (adgangskode, port, `OANDA_TOKEN` til Atlas og Meridian). Ret filen og kør
 `sudo systemctl restart hub`. Tjek status: `systemctl status hub`.
 

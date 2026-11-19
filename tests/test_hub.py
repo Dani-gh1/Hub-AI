@@ -151,6 +151,17 @@ class HubTests(unittest.TestCase):
             urllib.request.urlopen(base + "/api/bots")
         self.assertEqual(e.exception.code, 401)
 
+    def test_an_empty_password_means_no_login(self):
+        import os
+        os.environ["HUB_PASSWORD"] = ""
+        try:
+            hub = start(make_handler([]))
+        finally:
+            del os.environ["HUB_PASSWORD"]
+        base = f"http://127.0.0.1:{hub.server_port}"
+        self.assertEqual(urllib.request.urlopen(base + "/").status, 200)
+        self.assertEqual(json.load(urllib.request.urlopen(base + "/api/bots")), [])
+
     def test_password(self):
         import base64, os
         os.environ["HUB_PASSWORD"] = "hemmelig"

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Slå adgangskoden til dashboardet til eller fra og genstart hubben.
+#   ./deploy/password.sh off     ingen adgangskode (alle, der kan nå hubben, kan se dashboardet)
+#   ./deploy/password.sh local   ingen adgangskode, og kun denne maskine kan åbne dashboardet (127.0.0.1)
+#   ./deploy/password.sh on      ny tilfældig adgangskode, åben for netværket
+#   ./deploy/password.sh show    vis indstillingen
+set -euo pipefail
+OS="${HUB_OS:-$(uname -s)}"
+if [ "$OS" = Darwin ]; then ENV_FILE="${HUB_ENV_FILE:-$HOME/Library/Application Support/Hub AI/hub.env}"; else ENV_FILE="${HUB_ENV_FILE:-/etc/hub.env}"; fi
+[ -f "$ENV_FILE" ] || { echo "Fandt ikke $ENV_FILE. Kør først ./deploy/install.sh"; exit 1; }
+SUDO=""; [ -w "$ENV_FILE" ] || SUDO="sudo"
+
+setvar() {   # setvar NAVN VÆRDI  (erstatter eller tilføjer linjen)
+  local tmp; tmp="$(mktemp)"
+  { grep -v "^$1=" "$ENV_FILE" || true; echo "$1=$2"; } > "$tmp"
+  $SUDO sh -c "cat '$tmp' > '$ENV_FILE'"; rm -f "$tmp"
+}
+restart() {
+  [ "${HUB_DRY_RUN:-0}" = 1 ] && return 0
+  if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard"; else sudo systemctl restart hub; fi
+}
+host() { grep '^HUB_HOST=' "$ENV_FILE" | cut -d= -f2; }
+pw() { grep '^HUB_PASSWORD=' "$ENV_FILE" | cut -d= -f2-; }
+
+case "${1:-show}" in
+  off)   setvar HUB_PASSWORD ""; restart
+         echo "✓ Adgangskoden er slået fra."
+         [ "$(host)" = 0.0.0.0 ] && echo "  Obs: alle på samme netværk kan nu se dashboardet. Kun denne maskine: ./deploy/password.sh local" ;;
+  local) setvar HUB_PASSWORD ""; setvar HUB_HOST 127.0.0.1; restart
+         echo "✓ Ingen adgangskode, og kun denne maskine kan åbne dashboardet (http://localhost:8080). Telefonen kan ikke nå det." ;;
+  on)    NEW="$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20)"
+         setvar HUB_PASSWORD "$NEW"; setvar HUB_HOST 0.0.0.0; restart
+         echo "✓ Adgangskode slået til. Brugernavn: valgfrit   Adgangskode: $NEW" ;;
+  show)  echo "Vært: $(host)"
+         [ -n "$(pw)" ] && echo "Adgangskode: $(pw)" || echo "Ingen adgangskode (slået fra)" ;;
+  *)     echo "Brug: $0 off | local | on | show"; exit 1 ;;
+esac
