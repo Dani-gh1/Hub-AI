@@ -35,6 +35,14 @@ class SiteTests(unittest.TestCase):
         for page in PAGES:
             self.assertIn("serviceWorker.register(", page.read_text(encoding="utf-8"))
 
+    def test_the_global_overview_is_a_pinned_button_and_every_bot_page_names_its_bot(self):
+        shell = (Path(__file__).resolve().parent.parent / "hub" / "shell.html").read_text(encoding="utf-8")
+        self.assertIn('id="home"', shell)
+        self.assertIn("Alle botter", shell)
+        self.assertIn("function botHead()", shell)                          # ingen bot-side uden tydelig overskrift
+        self.assertNotIn('mk(OV, "Overblik"', shell)                        # ligger ikke længere i rækken, der ruller væk
+        self.assertIn("!(cur && cur.configured && cur.up)", shell)          # bundmenuen vises kun, når botten kan vises
+
     def test_the_shell_is_set_up_for_the_home_screen(self):
         shell = (Path(__file__).resolve().parent.parent / "hub" / "shell.html").read_text(encoding="utf-8")
         for needle in ('rel="manifest"', 'rel="apple-touch-icon"', "viewport-fit=cover", "apple-mobile-web-app-capable", 'name="theme-color"',
