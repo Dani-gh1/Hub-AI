@@ -206,8 +206,8 @@ def test_data_since_finds_earliest_point():
     from hub.server import data_since
     d = {"strategies": [{"curve": [[2_000_000_000 - 9e8, 0], [2_000_000_000 - 5e8, 1]]}, {"curve": []}],
          "trades": {"open": [{"ts": 1_200_000_000.0}], "closed": [{"ts": None}]}}
-    assert data_since(d) == 1_200_000_000          # har botten handler, tæller den ældste handel, ikke kurvens start
-    d["trades"] = {"open": [], "closed": []}
-    assert data_since(d) == 1_100_000_000          # uden handler bruges kurvens første punkt
+    assert data_since(d) == 1_100_000_000          # kurvens første punkt tæller, selv om en handel er ældre
+    d["strategies"] = [{"curve": []}]
+    assert data_since(d) == 1_200_000_000          # uden kurver bruges den ældste handel
     assert data_since({"strategies": [], "trades": {"open": [], "closed": []}}) is None
 

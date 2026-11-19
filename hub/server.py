@@ -86,15 +86,15 @@ _cache: dict[str, tuple[float, dict]] = {}
 
 
 def data_since(data: dict) -> float | None:
-    """Hvornår botten reelt begyndte at levere data. Har den handler, er det den ældste handel: en kurve kan nå langt tilbage
-    (gamle kørsler eller en flad startlinje) uden at der er sket noget. Uden handler bruges kurvens første punkt."""
-    tr = data.get("trades") or {}
+    """Hvornår strategierne begyndte at samle data: kurvernes første punkt. Handler kan være ældre (fx hovedkontoens gamle
+    handler fra tidligere kørsler), så de bruges kun, hvis der ingen kurver er."""
     ok = lambda t: isinstance(t, (int, float)) and 1.0e9 < t < time.time() + 86400
-    trades = [t.get("ts") for t in (tr.get("open") or []) + (tr.get("closed") or []) if ok(t.get("ts"))]
-    if trades:
-        return min(trades)
     curve = [p[0] for st in data.get("strategies") or [] for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and p and ok(p[0])]
-    return min(curve) if curve else None
+    if curve:
+        return min(curve)
+    tr = data.get("trades") or {}
+    trades = [t.get("ts") for t in (tr.get("open") or []) + (tr.get("closed") or []) if ok(t.get("ts"))]
+    return min(trades) if trades else None
 
 
 def bot_data(bot: dict) -> dict:
