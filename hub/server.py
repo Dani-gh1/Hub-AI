@@ -86,14 +86,15 @@ _cache: dict[str, tuple[float, dict]] = {}
 
 
 def data_since(data: dict) -> float | None:
-    """Det tidligste tidspunkt i botens egne data (kurvepunkter og handler), dvs. hvornår den begyndte at samle data."""
-    times = []
-    for st in data.get("strategies") or []:
-        times += [p[0] for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and p and isinstance(p[0], (int, float))]
+    """Hvornår botten reelt begyndte at levere data. Har den handler, er det den ældste handel: en kurve kan nå langt tilbage
+    (gamle kørsler eller en flad startlinje) uden at der er sket noget. Uden handler bruges kurvens første punkt."""
     tr = data.get("trades") or {}
-    times += [t.get("ts") for t in (tr.get("open") or []) + (tr.get("closed") or []) if isinstance(t.get("ts"), (int, float))]
-    times = [t for t in times if 1.0e9 < t < time.time() + 86400]
-    return min(times) if times else None
+    ok = lambda t: isinstance(t, (int, float)) and 1.0e9 < t < time.time() + 86400
+    trades = [t.get("ts") for t in (tr.get("open") or []) + (tr.get("closed") or []) if ok(t.get("ts"))]
+    if trades:
+        return min(trades)
+    curve = [p[0] for st in data.get("strategies") or [] for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and p and ok(p[0])]
+    return min(curve) if curve else None
 
 
 def bot_data(bot: dict) -> dict:
@@ -255,7 +256,7 @@ def bot_overview(bot: dict) -> dict:
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
             out["idle"] = data.get("idle") or ""
             if data.get("since"):
-                out["since"] = min(data["since"], out["since"] or data["since"])
+                out["since"] = data["since"]       # botten selv ved bedst, hvornår dens data begyndte (ikke hvornår hubben første gang så den)
         except (OSError, ValueError, KeyError, TypeError):
             pass
         if not out["idle"] and (out["scan_age"] is None or out["scan_age"] > STALE_AFTER_S):
