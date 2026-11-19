@@ -1,0 +1,20 @@
+[Unit]
+Description=Papirdesk Hub (alle botter og dashboardet)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@DIR@
+EnvironmentFile=/etc/hub.env
+ExecStart=@PY@ -m hub run
+Restart=always
+RestartSec=5
+# Botterne er børn af hubben: stoppes hubben, stoppes de pænt (nogle bruger op til to minutter på at lukke)
+KillMode=control-group
+TimeoutStopSec=180
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

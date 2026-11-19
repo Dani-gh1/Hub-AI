@@ -37,6 +37,29 @@ og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ stand
 
 Første fane er **Overblik** for alle botter: en tabel over, om de kører, og en tabel med hver bots bedste strategi.
 
+## Kør 24/7 uden at gøre noget
+
+Hubben skal køre på en maskine, der altid er tændt, fx en Linux-server hos Oracle Cloud (en MacBook går i dvale).
+Log ind på serveren med SSH og installér én gang:
+
+```bash
+git clone https://github.com/Dani-gh1/Hub-AI.git && cd Hub-AI && ./deploy/install.sh
+```
+
+Scriptet sætter alt op og skriver adressen og en adgangskode ud til sidst. Derefter gør det selv:
+
+* **Starter ved boot** og genstarter sig selv, hvis hubben går ned (systemd, `Restart=always`).
+* **Vagthund:** en bot, der går ned, startes igen efter 5 sekunder (pausen vokser, hvis den bliver ved, højst 5 min.).
+  En bot, hvis dashboard ikke svarer i 5 min., selv om processen lever, bliver dræbt og startet igen.
+* **Opdaterer sig selv** hvert kvarter fra GitHub (hubben, botterne og Nova). Hver opdatering køres først gennem
+  testene; består de ikke, rulles den tilbage, og intet genstartes. Log: `sudo journalctl -u hub-update`.
+* **Nova** kører allerede som egen tjeneste (`desk`). Scriptet finder den, starter ingen ekstra kopi og lader
+  hubben vise den. Den får også opdateringer og genstart ved nye versioner.
+* Logs for hver bot: `logs/<bot>.log` (roteres ved 5 MB). Hubbens: `sudo journalctl -u hub -f`.
+
+Indstillinger ligger i `/etc/hub.env` (adgangskode, port, `OANDA_TOKEN` til Atlas og Meridian). Ret filen og kør
+`sudo systemctl restart hub`. Tjek status: `systemctl status hub`.
+
 ## Sådan virker det
 
 * Hubben henter hver bots data fra dens eget dashboard og omsætter den til ét fælles format (`hub/adapters.py`),

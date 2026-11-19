@@ -1,0 +1,150 @@
+"""Vagthund: holder botterne kørende uden at nogen skal gøre noget.
+
+* En bot, der går ned, startes igen efter en kort pause (5 s, derefter dobbelt så lang hver gang, højst 5 min).
+  Har den kørt stabilt i 10 min, nulstilles pausen.
+* En bot, hvis dashboard ikke svarer i 5 min, selv om processen lever (den hænger), bliver dræbt og startet igen.
+* Er botterns port stadig optaget af en gammel proces, der er ved at lukke, venter vi i stedet for at fejle.
+* Al output skrives til logs/<bot>.log (roteres ved 5 MB).
+"""
+from __future__ import annotations
+
+import os
+import subprocess
+import threading
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+BACKOFF_START, BACKOFF_MAX, STABLE_AFTER = 5.0, 300.0, 600.0
+HANG_AFTER = 300.0          # sekunder uden et svar på porten, før en levende proces regnes for hængt
+PORT_WAIT = 150.0           # så længe venter vi på, at en gammel proces slipper porten
+LOG_MAX = 5_000_000
+
+
+@dataclass
+class Unit:
+    key: str
+    name: str
+    cmd: list[str]
+    cwd: Path
+    port: int | None = None          # kun enheden, der ejer dashboard-porten, overvåges for hængning
+    log_name: str | None = None      # navn på logfilen (standard: botnavnet)
+    proc: subprocess.Popen | None = field(default=None, repr=False)
+    started: float = 0.0
+    last_ok: float = 0.0
+    next_start: float = 0.0
+    backoff: float = BACKOFF_START
+    restarts: int = 0
+    port_wait_since: float | None = None
+    log_file: object = field(default=None, repr=False)
+
+
+class Supervisor:
+    def __init__(self, units: list[Unit], logdir: Path, port_open, popen=subprocess.Popen, now=time.monotonic, say=print):
+        self.units, self.logdir, self.port_open, self.popen, self.now, self.say = units, logdir, port_open, popen, now, say
+        self.stop = threading.Event()
+        self.thread: threading.Thread | None = None
+
+    # ---------------------------------------------------------------- start/stop
+    def _open_log(self, u: Unit):
+        self.logdir.mkdir(parents=True, exist_ok=True)
+        path = self.logdir / f"{u.log_name or u.key}.log"
+        try:
+            if path.exists() and path.stat().st_size > LOG_MAX:
+                path.replace(path.with_suffix(".log.1"))
+        except OSError:
+            pass
+        return open(path, "ab", buffering=0)
+
+    def _start(self, u: Unit) -> None:
+        if u.log_file:
+            try:
+                u.log_file.close()
+            except OSError:
+                pass
+        u.log_file = self._open_log(u)
+        u.log_file.write(f"\n--- start {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n".encode())
+        u.proc = self.popen(u.cmd, cwd=u.cwd, stdout=u.log_file, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        u.started = u.last_ok = self.now()
+        u.port_wait_since = None
+
+    def tick(self) -> None:
+        t = self.now()
+        for u in self.units:
+            if u.proc is None:
+                if t < u.next_start:
+                    continue
+                if u.port and self.port_open(u.port):                      # gammel proces holder stadig porten
+                    u.port_wait_since = u.port_wait_since or t
+                    if t - u.port_wait_since < PORT_WAIT:
+                        u.next_start = t + 3
+                        continue
+                    self.say(f"! {u.name}: port {u.port} er stadig optaget efter {PORT_WAIT:.0f} s – starter alligevel")
+                self._start(u)
+                self.say(f"▶ {u.name} startet" + (f" (genstart nr. {u.restarts})" if u.restarts else ""))
+                continue
+            code = u.proc.poll()
+            if code is not None:                                            # processen er død
+                up = t - u.started
+                if up >= STABLE_AFTER:
+                    u.backoff = BACKOFF_START
+                wait, u.backoff = u.backoff, min(u.backoff * 2, BACKOFF_MAX)     # 5 s, 10 s, 20 s … højst 5 min
+                u.proc, u.restarts, u.next_start = None, u.restarts + 1, t + wait
+                self.say(f"✗ {u.name} stoppede (kode {code}) efter {up:.0f} s – starter igen om {wait:.0f} s")
+                continue
+            if u.port:                                                      # processen lever: svarer dashboardet?
+                if self.port_open(u.port):
+                    u.last_ok = t
+                elif t - u.last_ok > HANG_AFTER:
+                    self.say(f"✗ {u.name} svarer ikke på port {u.port} i {HANG_AFTER:.0f} s – dræber og starter igen")
+                    self._kill(u)
+
+    def _kill(self, u: Unit) -> None:
+        if u.proc and u.proc.poll() is None:
+            u.proc.terminate()
+            try:
+                u.proc.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                u.proc.kill()
+                u.proc.wait()
+        u.proc = None
+        u.restarts += 1
+        u.next_start = self.now() + BACKOFF_START
+
+    def run_forever(self) -> None:
+        while not self.stop.wait(2.0):
+            try:
+                self.tick()
+            except Exception as e:                                          # vagthunden må aldrig selv gå ned
+                self.say(f"! vagthund-fejl: {type(e).__name__}: {e}")
+
+    def start_thread(self) -> None:
+        self.tick()
+        self.thread = threading.Thread(target=self.run_forever, daemon=True, name="supervisor")
+        self.thread.start()
+
+    def shutdown(self, wait: float = 150.0) -> None:
+        self.stop.set()
+        live = [u for u in self.units if u.proc and u.proc.poll() is None]
+        if live:
+            self.say("Lukker botterne (kan tage op til to minutter, fordi nogle gør deres scanning færdig) …")
+        for u in live:
+            u.proc.terminate()
+        end = time.monotonic() + wait
+        for u in live:
+            try:
+                u.proc.wait(timeout=max(1.0, end - time.monotonic()))
+            except subprocess.TimeoutExpired:
+                u.proc.kill()
+        for u in self.units:
+            u.proc = None
+            if u.log_file:
+                try:
+                    u.log_file.close()
+                except OSError:
+                    pass
+
+    def status(self) -> list[dict]:
+        t = self.now()
+        return [{"key": u.key, "alive": bool(u.proc and u.proc.poll() is None), "restarts": u.restarts,
+                 "uptime_s": round(t - u.started) if u.proc else 0} for u in self.units]

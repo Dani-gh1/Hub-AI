@@ -1,0 +1,10 @@
+[Unit]
+Description=Tjek for nye versioner af Papirdesk Hub hvert kvarter
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

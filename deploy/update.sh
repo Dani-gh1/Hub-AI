@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Henter nye versioner af hubben, botterne og (hvis sat) Nova fra GitHub.
+# Hver opdatering testes først. Fejler testene, rulles den tilbage, og intet genstartes.
+# Køres af systemd-timeren som root; selve git-arbejdet køres som ejeren af mappen.
+set -uo pipefail
+
+HUB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUN_USER="${HUB_USER:-$(stat -c %U "$HUB_DIR")}"
+DRY="${HUB_DRY_RUN:-0}"
+
+as_user() { if [ "$(id -u)" -eq 0 ] && [ "$RUN_USER" != root ]; then runuser -u "$RUN_USER" -- "$@"; else "$@"; fi; }
+say() { echo "[hub-update] $*"; }
+
+# update_dir <mappe> [gren]  ->  returnerer 0 = uændret, 1 = opdateret og testet, 2 = fejlede og rullet tilbage
+update_dir() {
+  local d="$1" branch="${2:-}" before after
+  [ -d "$d/.git" ] || return 0
+  before="$(as_user git -C "$d" rev-parse HEAD)" || return 0
+  as_user git -C "$d" checkout -q -- runs/state.json 2>/dev/null || true    # Novas bog ændres lokalt af botten
+  if [ -n "$branch" ]; then as_user git -C "$d" pull -q --ff-only origin "$branch" 2>/dev/null
+  else as_user git -C "$d" pull -q --ff-only 2>/dev/null; fi || { say "kunne ikke hente $d (springer over)"; return 0; }
+  after="$(as_user git -C "$d" rev-parse HEAD)"
+  [ "$before" = "$after" ] && return 0
+  if [ -d "$d/tests" ] && ! (cd "$d" && as_user timeout 180 python3 -m unittest discover -s tests -t . >/dev/null 2>&1); then
+    say "NYE ÆNDRINGER I $d BESTOD IKKE TESTENE – ruller tilbage til ${before:0:8}"
+    as_user git -C "$d" reset -q --hard "$before"
+    return 2
+  fi
+  say "opdateret $d: ${before:0:8} -> ${after:0:8}"
+  return 1
+}
+
+restart() { say "genstarter $1"; [ "$DRY" = 1 ] || systemctl restart "$1"; }
+
+hub_changed=0
+update_dir "$HUB_DIR"; [ $? -eq 1 ] && hub_changed=1
+for d in "$HUB_DIR"/bots/*/; do
+  [ -L "${d%/}" ] && continue                      # symlinks (fx Nova) opdateres for sig selv nedenfor
+  update_dir "$d"; [ $? -eq 1 ] && hub_changed=1
+done
+[ "$hub_changed" = 1 ] && restart hub
+
+if [ -n "${HUB_UPDATE_NOVA_DIR:-}" ]; then
+  update_dir "$HUB_UPDATE_NOVA_DIR" "${HUB_UPDATE_NOVA_BRANCH:-}"; [ $? -eq 1 ] && restart "${HUB_UPDATE_NOVA_SERVICE:-desk}"
+fi
+exit 0

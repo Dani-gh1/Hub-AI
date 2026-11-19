@@ -21,7 +21,14 @@ SHELL = Path(__file__).with_name("shell.html")
 
 
 def load_bots(path: Path | None = None) -> list[dict]:
-    return json.loads((path or ROOT / "bots.json").read_text(encoding="utf-8"))["bots"]
+    """Læser bots.json. HUB_EXTERNAL_<BOT>=<port> betyder, at botten allerede kører som egen service på den port
+    (fx Nova på serveren): hubben viser den, men starter ingen ekstra kopi."""
+    bots = json.loads((path or ROOT / "bots.json").read_text(encoding="utf-8"))["bots"]
+    for b in bots:
+        ext = os.environ.get(f"HUB_EXTERNAL_{b['key'].upper()}")
+        if ext and ext.isdigit():
+            b["port"], b["external"] = int(ext), True
+    return bots
 
 
 def port_open(port: int, host: str = "127.0.0.1") -> bool:

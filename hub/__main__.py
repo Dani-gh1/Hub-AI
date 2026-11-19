@@ -12,7 +12,6 @@ import os
 import signal
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 from .server import ROOT, load_bots, port_open, serve
@@ -46,7 +45,9 @@ def commands(bot: dict) -> list[list[str]]:
 def cmd_fetch(bots) -> None:
     BOTS_DIR.mkdir(parents=True, exist_ok=True)
     for b in bots:
-        if not b.get("repo"):
+        if b.get("external"):
+            print(f"· {b['name']}: kører som egen service, hentes ikke")
+        elif not b.get("repo"):
             print(f"- {b['name']}: ingen repo sat i bots.json endnu")
         elif bot_dir(b).exists():
             print(f"✓ {b['name']}: findes allerede")
@@ -57,57 +58,32 @@ def cmd_fetch(bots) -> None:
 
 def cmd_status(bots) -> None:
     for b in bots:
-        inst = "installeret" if b.get("repo") and bot_dir(b).exists() else "mangler"
+        inst = "ekstern" if b.get("external") else "installeret" if b.get("repo") and bot_dir(b).exists() else "mangler"
         run = "kører" if port_open(b["port"]) else "kører ikke"
         print(f"{b['name']:<12} {inst:<12} {run:<11} port {b['port']}")
 
 
-def wait_port_free(bot: dict, seconds: int = 150) -> bool:
-    """En bot, der er ved at lukke, kan holde sin port optaget i op til et par minutter (fx Nova midt i en scanning)."""
-    if not port_open(bot["port"]):
-        return True
-    print(f"… {bot['name']}: port {bot['port']} er stadig optaget af en gammel proces, venter på at den lukker")
-    for _ in range(seconds // 2):
-        time.sleep(2)
-        if not port_open(bot["port"]):
-            return True
-    return False
-
-
 def cmd_run(bots, host: str, port: int) -> None:
-    procs = []
-
-    def shutdown() -> None:
-        if not procs:
-            return
-        print("Lukker botterne (kan tage op til to minutter, fordi nogle gør deres scanning færdig) …", flush=True)
-        for _b, p in procs:
-            p.terminate()
-        for _b, p in procs:
-            try:
-                p.wait(timeout=150)
-            except subprocess.TimeoutExpired:
-                p.kill()
-        procs.clear()
-
+    from .supervisor import Supervisor, Unit
+    units = []
     for b in bots:
         d = bot_dir(b)
+        if b.get("external"):
+            print(f"· {b['name']}: kører allerede som egen service på port {b['port']} – starter ingen kopi")
+            continue
         if not b.get("repo") or not d.exists() or "launch" not in b:
             print(f"· springer {b['name']} over (ikke installeret)")
             continue
-        if not wait_port_free(b):
-            print(f"✗ {b['name']}: port {b['port']} er stadig optaget – starter den ikke")
-            continue
-        for cmd in commands(b):
-            procs.append((b, subprocess.Popen(cmd, cwd=d, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)))
-        print(f"▶ {b['name']} på port {b['port']}")
-
+        for i, cmd in enumerate(commands(b)):
+            units.append(Unit(b["key"], b["name"] if i == 0 else f"{b['name']} (motor)", cmd, d, b["port"] if i == 0 else None,
+                              None if i == 0 else f"{b['key']}-motor"))
+    sup = Supervisor(units, Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs")), port_open)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
-    time.sleep(1.5)
+    sup.start_thread()                       # botterne starter i baggrunden, så hubben svarer med det samme
     try:
         serve(host, port, bots)
     finally:
-        shutdown()
+        sup.shutdown()
 
 
 def main(argv=None) -> int:
