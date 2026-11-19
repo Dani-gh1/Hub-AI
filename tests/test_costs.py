@@ -74,6 +74,15 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.call(base + "/api/costs/atlas", {}, {"Content-Type": "text/plain"})[0], 415)
         self.assertEqual(self.call(base + "/api/costs/atlas", {}, {**j, "Origin": "https://evil.example"})[0], 403)
 
+    def test_open_mode_visitors_from_the_internet_can_only_look(self):
+        os.environ["HUB_OPEN"] = "1"
+        self.addCleanup(lambda: os.environ.pop("HUB_OPEN", None))
+        base = self.serve()
+        j = {"Content-Type": "application/json"}
+        self.assertEqual(self.call(base + "/api/costs/atlas", {"enabled": True}, {**j, "Tailscale-Funnel-Request": "?1"})[0], 403)
+        self.assertEqual(self.call(base + "/api/costs/atlas")[0], 200)                  # men de kan godt se
+        self.assertEqual(self.call(base + "/api/costs/atlas", {"enabled": True}, j)[0], 200)   # egne enheder (via Tailscale) kan ændre
+
     def test_post_needs_password(self):
         base = self.serve("hemmelig-kode")
         self.assertEqual(self.call(base + "/api/costs/atlas", {"enabled": True}, {"Content-Type": "application/json"})[0], 401)

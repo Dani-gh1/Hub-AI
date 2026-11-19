@@ -430,6 +430,9 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
                 if not m or m.group(1) not in by_key:
                     return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
+                if os.environ.get("HUB_OPEN") == "1" and not password and self.headers.get("Tailscale-Funnel-Request"):
+                    # åbent for alle uden kode: besøgende fra internettet må kun se. Dine egne enheder (via Tailscale) kan stadig ændre.
+                    return self._send(403, "text/plain; charset=utf-8", "Kun visning. Indstillinger kan kun ændres fra dine egne enheder.".encode())
                 origin = self.headers.get("Origin")
                 if origin and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):      # kun fra dashboardet selv
                     return self._send(403, "text/plain; charset=utf-8", "forkert oprindelse".encode())
