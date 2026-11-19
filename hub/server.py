@@ -242,7 +242,7 @@ def bot_overview(bot: dict) -> dict:
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
     out["scan_age"], out["issue"], out["trades"], out["idle"] = None, "", None, ""
-    out["since"] = collecting_since(bot["key"], out["up"])
+    out["since"] = None if bot.get("disabled") else collecting_since(bot["key"], out["up"])      # slået fra: intet tæller
     out["note_short"] = "Slået fra her" if bot.get("disabled") else ""
     if not_installed(bot):
         out["configured"], out["up"] = False, False
@@ -443,8 +443,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                             "short": b.get("short", ""),
                             "configured": bool(b.get("repo")) and not b.get("disabled"), "note": b.get("note", ""), "note_short": "Slået fra her" if b.get("disabled") else "",
                             "up": not b.get("disabled") and port_open(b["port"], bot_host(b))} for b in bots]
-                    for o in out:
-                        o["since"] = collecting_since(o["key"], o["up"])
+                    for o, b in zip(out, bots):
+                        o["since"] = None if b.get("disabled") else collecting_since(o["key"], o["up"])
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
