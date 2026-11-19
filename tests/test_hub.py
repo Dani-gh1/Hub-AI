@@ -1,10 +1,12 @@
 import json
+from pathlib import Path
 import threading
 import unittest
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from hub.adapters import ADAPTERS, fmt, group_settings, points, ts
+from hub import server as srv
 from hub.server import best_of, inject, load_bots, make_handler
 
 
@@ -54,6 +56,19 @@ class HubTests(unittest.TestCase):
             self.assertNotIn("external", {b["key"]: b for b in load_bots()}["nova"])   # ugyldig værdi ignoreres
         finally:
             del os.environ["HUB_EXTERNAL_NOVA"]
+
+    def test_last_problem_reads_the_latest_error_line_from_the_bot_log(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "x.log").write_text('start\nTraceback (most recent call last):\n  File "a.py", line 3, in f\nValueError: dårlig\nok igen\n'
+                                           'desk.net.HttpError: Ingen børs svarer (binance/bybit): spærret eller nede?\nstadig i gang\n')
+            old = srv.LOG_DIR
+            srv.LOG_DIR = Path(d)
+            try:
+                self.assertIn("Ingen børs svarer", srv.last_problem({"key": "x"}))
+                self.assertEqual(srv.last_problem({"key": "findes-ikke"}), "")
+            finally:
+                srv.LOG_DIR = old
 
     def test_every_bot_has_label(self):
         for b in load_bots():

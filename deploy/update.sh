@@ -14,6 +14,16 @@ TO=""; command -v timeout >/dev/null 2>&1 && TO="timeout 180"      # macOS har i
 as_user() { if [ "$(id -u)" -eq 0 ] && [ "$RUN_USER" != root ]; then runuser -u "$RUN_USER" -- "$@"; else "$@"; fi; }
 say() { echo "[hub-update] $*"; }
 
+# Kører testene i en ren kopi af den committede kode (git archive), aldrig i selve botten. Nogle botters tests bruger
+# botternes rigtige datamappe, og de kunne ellers slette eller fylde den rigtige papirbog med syntetiske handler.
+run_tests() {
+  local d="$1" tmp rc
+  tmp="$(mktemp -d)"; chown "$RUN_USER" "$tmp" 2>/dev/null || true
+  as_user git -C "$d" archive HEAD | tar -x -C "$tmp" || { rm -rf "$tmp"; return 1; }
+  (cd "$tmp" && as_user $TO python3 -m unittest discover -s tests -t . >/dev/null 2>&1); rc=$?
+  rm -rf "$tmp"; return $rc
+}
+
 # update_dir <mappe> [gren]  ->  returnerer 0 = uændret, 1 = opdateret og testet, 2 = fejlede og rullet tilbage
 update_dir() {
   local d="$1" branch="${2:-}" before after
@@ -24,7 +34,7 @@ update_dir() {
   else as_user git -C "$d" pull -q --ff-only 2>/dev/null; fi || { say "kunne ikke hente $d (springer over)"; return 0; }
   after="$(as_user git -C "$d" rev-parse HEAD)"
   [ "$before" = "$after" ] && return 0
-  if [ -d "$d/tests" ] && ! (cd "$d" && as_user $TO python3 -m unittest discover -s tests -t . >/dev/null 2>&1); then
+  if [ -d "$d/tests" ] && ! run_tests "$d"; then
     say "NYE ÆNDRINGER I $d BESTOD IKKE TESTENE – ruller tilbage til ${before:0:8}"
     as_user git -C "$d" reset -q --hard "$before"
     return 2

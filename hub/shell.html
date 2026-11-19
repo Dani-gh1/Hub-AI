@@ -52,6 +52,7 @@ header{position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top);bac
 .pill[aria-selected=true]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:var(--shadow),0 0 0 1px var(--line)}
 .pill .t{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.pill small{color:var(--mute);font-weight:400;font-size:11.5px}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--mute);flex:none}
+.issue{font-size:12px;color:var(--mute);white-space:normal;max-width:380px;margin-top:3px;line-height:1.35}
 .dot.warn{background:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 22%,transparent)}
 .dot.up{background:var(--pos);box-shadow:0 0 0 3px color-mix(in srgb,var(--pos) 18%,transparent)}.dot.down{background:var(--neg)}
 .subbar{border-top:1px solid var(--line)}
@@ -495,7 +496,8 @@ function renderHub(rows) {
           const text = !b.configured ? (b.note ? "Slået fra her" : "Ikke koblet på") : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : stale ? "Scanner ikke" : b.scan_age == null ? "Kører" : "Scanner";
           const dot = !b.configured ? "" : !b.up ? "down" : stale ? "warn" : "up";
           return h("tr", {}, h("td", { class: "name" }, link(b), h("span", { class: "under" }, b.invests || "")), h("td", { class: "hide-m" }, b.invests || "–"),
-            h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + dot }), text), h("span", { class: "under" }, b.up ? "Scannet " + ago(b.scan_age) : "")),
+            h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + dot }), text), h("span", { class: "under" }, b.up ? "Scannet " + ago(b.scan_age) : ""),
+              b.issue ? h("div", { class: "issue", title: b.issue }, b.issue) : null),
             h("td", { class: "hide-m " + (stale ? "neg" : "mute") }, b.up ? ago(b.scan_age) : "–"),
             h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));
         }))))),

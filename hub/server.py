@@ -93,6 +93,21 @@ def bot_data(bot: dict) -> dict:
     return data
 
 
+LOG_DIR = Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs"))
+
+
+def last_problem(bot: dict) -> str:
+    """Sidste fejllinje i botens log (til at forklare, hvorfor den ikke scanner), ellers tom tekst."""
+    try:
+        tail = (LOG_DIR / f"{bot['key']}.log").read_bytes()[-8000:].decode("utf-8", "replace")
+    except OSError:
+        return ""
+    for line in reversed(tail.splitlines()):
+        if re.search(r"Error|Exception|fejlede|svarer ikke|spærret|Traceback", line) and 'File "' not in line:
+            return line.strip()[-170:]
+    return ""
+
+
 STALE_AFTER_S = 20 * 60          # så længe uden scanning før overblikket advarer
 RESTART_AFTER_S = 45 * 60        # så længe uden scanning før vagthunden genstarter en bot
 
@@ -122,7 +137,7 @@ def bot_overview(bot: dict) -> dict:
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
-    out["scan_age"] = None
+    out["scan_age"], out["issue"] = None, ""
     if out["up"]:
         try:
             data = bot_data(bot)
@@ -130,6 +145,8 @@ def bot_overview(bot: dict) -> dict:
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
         except (OSError, ValueError, KeyError, TypeError):
             pass
+        if out["scan_age"] is None or out["scan_age"] > STALE_AFTER_S:
+            out["issue"] = last_problem(bot)
     return out
 
 
