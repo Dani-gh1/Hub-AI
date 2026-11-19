@@ -11,7 +11,7 @@ SCRIPT = Path(__file__).resolve().parent.parent / "deploy" / "public.sh"
 STUB = r'''#!/bin/bash
 echo "tailscale $*" >> "$STUBLOG"
 # som på en rigtig server: ændringer afvises, medmindre de køres som root (falsk sudo sætter STUBROOT)
-if { [ -n "${STUBNEEDROOT:-}" ] && [ -z "${STUBROOT:-}" ]; } || [ -n "${STUBALWAYSDENY:-}" ]; then case "$1 $2" in "serve --bg"|"funnel --bg"|"funnel --https"*|"serve --https"*) echo "sending serve config: Access denied: serve config denied"; exit 1;; esac; fi
+if { [ -n "${STUBNEEDROOT:-}" ] && [ -z "${STUBROOT:-}" ]; } || [ -n "${STUBALWAYSDENY:-}" ]; then case "$1 $2" in "serve --bg"|"funnel --bg"|"funnel --https"*|"serve --https"*|"funnel "[0-9]*|"serve https"*) echo "sending serve config: Access denied: serve config denied"; exit 1;; esac; fi
 hp=443; for a in "$@"; do case "$a" in --https=*) hp="${a#--https=}";; esac; done
 suffix=""; [ "$hp" != 443 ] && suffix=":$hp"
 case "$1" in
