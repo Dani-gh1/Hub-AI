@@ -137,11 +137,13 @@ def bot_overview(bot: dict) -> dict:
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
-    out["scan_age"], out["issue"] = None, ""
+    out["scan_age"], out["issue"], out["trades"] = None, "", None
     if out["up"]:
         try:
             data = bot_data(bot)
             out["best"] = best_of(data["strategies"])
+            out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
+                             "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
         except (OSError, ValueError, KeyError, TypeError):
             pass
