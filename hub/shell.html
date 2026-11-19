@@ -26,6 +26,25 @@ header{background:var(--card);border-bottom:1px solid var(--line)}
 #sub button[aria-selected=true]{background:var(--acc);border-color:var(--acc);color:#fff}
 main{flex:1;min-height:0;position:relative}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
+#overview{position:absolute;inset:0;overflow:auto;padding:16px}
+.wrap{max-width:980px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.card h2{font-size:15px;margin:0 0 4px}.card p.sub{margin:0 0 10px;color:var(--mute);font-size:13px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-weight:600;color:var(--mute);font-size:12px;text-align:left;border-bottom:1px solid var(--line);padding:6px 10px;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td a{color:var(--ink);font-weight:600;text-decoration:none}td a:hover{text-decoration:underline}
+.pos{color:var(--ok)}.neg{color:var(--off)}.mute{color:var(--mute)}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:1px 7px;color:var(--mute);margin-left:6px}
+.st{display:inline-flex;align-items:center;gap:7px}
+.mo{display:none}
+.under{display:block;font-weight:400;font-size:12px;color:var(--mute);margin-top:1px;white-space:normal}
+@media (max-width:640px){.dm{display:none}.mo{display:block}#overview{padding:12px}.card{padding:12px}
+ td,th{padding:8px 6px;white-space:normal}.tag{display:none}td.n{white-space:nowrap}.st{align-items:flex-start}.st .dot{margin-top:6px;flex:none}}
+.note{font-size:12.5px;color:var(--mute);margin:0}
 .msg{max-width:520px;margin:12vh auto;padding:0 16px;text-align:center}
 .msg h2{margin:0 0 8px}.msg p{color:var(--mute);margin:6px 0}
 code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
@@ -41,11 +60,23 @@ code{background:var(--card);border:1px solid var(--line);border-radius:6px;paddi
 <main>
   <iframe id="frame" title="Dashboard" hidden></iframe>
   <div class="msg" id="msg" hidden></div>
+  <section id="overview" hidden aria-label="Overblik">
+    <div class="wrap">
+      <div class="card"><h2>Kører de?</h2><p class="sub">Status for alle syv botter lige nu.</p>
+        <div class="tw"><table><thead><tr><th>Bot</th><th class="dm">Investerer i</th><th>Status</th><th class="n"><span class="dm">Strategier i plus</span><span class="mo">I plus</span></th></tr></thead>
+        <tbody id="ovStatus"></tbody></table></div></div>
+      <div class="card"><h2>Bedste strategi pr. bot</h2><p class="sub">Afkast i procent af papirkontoen siden den nuværende epoke startede. Sorteret efter afkast.</p>
+        <div class="tw"><table><thead><tr><th class="dm">#</th><th>Bot</th><th>Bedste strategi</th><th class="n">Afkast</th><th class="n"><span class="dm">Lukkede handler</span><span class="mo">Handler</span></th></tr></thead>
+        <tbody id="ovBest"></tbody></table></div></div>
+      <p class="note">Kun papirhandel med fiktive penge. Med få lukkede handler er tallene mest held eller uheld og siger lidt om, hvad en strategi kan på sigt. Afkast er før skat og uden garanti for, at det holder med rigtige penge.</p>
+    </div>
+  </section>
 </main>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
-let BOTS = [], cur = null, curSub = null;
+const OV = "overblik";
+let BOTS = [], cur = null, curKey = OV, curSub = null;
 
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
@@ -57,13 +88,14 @@ function route() { const [b, s] = location.hash.slice(1).split("/"); return [b, 
 function setRoute(b, s) { history.replaceState(null, "", "#" + b + (s ? "/" + s : "")); }
 
 function drawTabs() {
-  $("tabs").replaceChildren(...BOTS.map((b) => {
-    const state = !b.configured ? "" : b.up ? "up" : "down";
-    const btn = el("button", { role: "tab", "aria-selected": String(b.key === cur?.key), type: "button" },
-      el("span", { class: "dot " + state }), b.name);
-    btn.onclick = () => selectBot(b.key);
+  const mk = (key, label, state) => {
+    const btn = el("button", { role: "tab", "aria-selected": String(key === curKey), type: "button" },
+      ...(state === null ? [] : [el("span", { class: "dot " + state })]), label);
+    btn.onclick = () => selectBot(key);
     return btn;
-  }));
+  };
+  $("tabs").replaceChildren(mk(OV, "Overblik", null), ...BOTS.map((b) =>
+    mk(b.key, b.short ? `${b.name} (${b.short})` : b.name, !b.configured ? "" : b.up ? "up" : "down")));
 }
 function drawSub() {
   const row = $("sub");
@@ -76,10 +108,47 @@ function drawSub() {
   }));
 }
 function message(html) {
-  $("frame").hidden = true; $("msg").hidden = false; $("msg").innerHTML = html;
+  $("overview").hidden = true; $("frame").hidden = true; $("msg").hidden = false; $("msg").innerHTML = html;
 }
+const pct = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %";
+const tone = (v) => (v > 0 ? "pos" : v < 0 ? "neg" : "mute");
+const link = (b) => el("a", { href: "#" + b.key }, b.name);
+
+async function loadOverview() {
+  let rows;
+  try {
+    const r = await fetch("/api/overview", { cache: "no-store" });
+    if (!r.ok) throw 0;
+    rows = await r.json();
+  } catch (e) { return; }
+  if (curKey !== OV) return;
+  $("ovStatus").replaceChildren(...rows.map((b) => {
+    const text = !b.configured ? "Ikke koblet på" : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kører (kun dashboard)" : "Kører";
+    const dot = !b.configured ? "" : b.up ? "up" : "down";
+    const plus = b.best ? `${b.best.positive} af ${b.best.count}` : "–";
+    return el("tr", {}, el("td", { class: "wrap-m" }, link(b), el("span", { class: "under mo" }, b.invests || "")), el("td", { class: "dm" }, b.invests || "–"),
+      el("td", {}, el("span", { class: "st" }, el("span", { class: "dot " + dot }), text)), el("td", { class: "n" }, plus));
+  }));
+  const ranked = rows.filter((b) => b.best).sort((x, y) => y.best.return_pct - x.best.return_pct);
+  const none = rows.filter((b) => !b.best);
+  $("ovBest").replaceChildren(...ranked.map((b, i) => el("tr", {},
+    el("td", { class: "mute dm" }, String(i + 1)), el("td", {}, link(b)), el("td", {}, b.best.name),
+    el("td", { class: "n " + tone(b.best.return_pct) }, pct(b.best.return_pct)),
+    el("td", { class: "n" }, String(b.best.trades), ...(b.best.trades < 20 ? [el("span", { class: "tag" }, "få")] : [])))),
+    ...none.map((b) => el("tr", {}, el("td", { class: "mute dm" }, "–"), el("td", {}, link(b)),
+      el("td", { class: "mute" }, "Ingen data endnu"), el("td", { class: "n mute" }, "–"), el("td", { class: "n mute" }, "–"))));
+}
+
 function selectBot(key, sub) {
+  if (key === OV || !BOTS.some((b) => b.key === key)) {
+    cur = null; curKey = OV; curSub = null; setRoute(OV);
+    drawTabs(); drawSub();
+    $("frame").hidden = true; $("msg").hidden = true; $("overview").hidden = false;
+    return loadOverview();
+  }
+  $("overview").hidden = true;
   cur = BOTS.find((b) => b.key === key) || BOTS[0];
+  curKey = cur.key;
   curSub = sub || cur.tabs[0]?.[0] || null;
   setRoute(cur.key, curSub);
   drawTabs(); drawSub();
@@ -117,6 +186,7 @@ async function refresh() {
     BOTS = next;
     if (cur) cur = BOTS.find((b) => b.key === cur.key);
     drawTabs();
+    if (curKey === OV) loadOverview();
     if (cur && cur.up !== wasUp && !(cur.up && wasUp)) selectBot(cur.key, curSub);
   } catch (e) { /* hubben er midlertidigt væk – prøv igen næste gang */ }
 }
@@ -124,11 +194,10 @@ async function refresh() {
 (async function init() {
   await refresh();
   const [b, s] = route();
-  const first = BOTS.find((x) => x.key === b) || BOTS.find((x) => x.configured && x.up) || BOTS[0];
-  if (first) selectBot(first.key, s);
+  selectBot(BOTS.some((x) => x.key === b) ? b : OV, s);
   setInterval(refresh, 10000);
 })();
-addEventListener("hashchange", () => { const [b, s] = route(); if (b && (b !== cur?.key || s !== curSub)) selectBot(b, s); });
+addEventListener("hashchange", () => { const [b, s] = route(); if (b && (b !== curKey || (s || null) !== curSub)) selectBot(b, s); });
 </script>
 </body>
 </html>

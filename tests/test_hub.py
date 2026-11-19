@@ -4,7 +4,7 @@ import unittest
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from hub.server import inject, load_bots, make_handler
+from hub.server import extract_best, inject, load_bots, make_handler
 
 
 class Fake(BaseHTTPRequestHandler):
@@ -35,6 +35,20 @@ class HubTests(unittest.TestCase):
             if b.get("repo"):
                 self.assertTrue(b["tabs"] and b["launch"])
 
+    def test_every_bot_has_label_and_best_rule(self):
+        for b in load_bots():
+            self.assertTrue(b["short"] and b["invests"], b["key"])
+            self.assertTrue(b["best"]["path"] and b["best"]["ret"], b["key"])
+
+    def test_extract_best(self):
+        cfg = {"list": "a.rows", "name": ["n", "c"], "ret": "r", "trades": "t"}
+        data = {"a": {"rows": [{"n": "X", "c": "Base", "r": -1.5, "t": 4}, {"n": "Y", "c": "", "r": 2.345, "t": 30},
+                               {"n": "Z", "r": None, "t": 1}]}}
+        self.assertEqual(extract_best(data, cfg), {"name": "Y", "return_pct": 2.35, "trades": 30, "count": 2, "positive": 1})
+        self.assertEqual(extract_best([{"n": "A", "r": 0.5}], {"list": "", "name": ["n"], "ret": "r"})["name"], "A")
+        self.assertIsNone(extract_best({"a": {}}, cfg))
+        self.assertIsNone(extract_best({"a": {"rows": [{"n": "X", "r": "x"}]}}, cfg))
+
     def test_inject_prefixes_paths_and_hides_nav(self):
         out = inject(b"<head></head><img src='/x.png'><a href='/b/k/y'>", "k", "nav").decode()
         self.assertIn('"/b/k"', out)
@@ -51,6 +65,9 @@ class HubTests(unittest.TestCase):
         data = json.load(urllib.request.urlopen(base + "/api/bots"))
         self.assertTrue(data[0]["up"] and data[0]["configured"])
         self.assertFalse(data[1]["configured"])
+        ov = json.load(urllib.request.urlopen(base + "/api/overview"))
+        self.assertEqual([o["key"] for o in ov], ["a", "b"])
+        self.assertTrue(ov[0]["up"] and ov[0]["best"] is None)  # ingen best-regel i fake-botten
         page = urllib.request.urlopen(base + "/b/a/").read().decode()
         self.assertIn("window.fetch", page)
         self.assertIn("/b/a/static/a.png", page)

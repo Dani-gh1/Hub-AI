@@ -39,7 +39,18 @@
      "dashboard"
     ]
    },
-   "hide": "nav[role=tablist]"
+   "hide": "nav[role=tablist]",
+   "short": "forex",
+   "invests": "Forex og råvarer (EUR/USD, guld, olie)",
+   "best": {
+    "path": "/api/strategies",
+    "list": "strategies",
+    "name": [
+     "title"
+    ],
+    "ret": "return_pct",
+    "trades": "trades"
+   }
   },
   {
    "key": "meridian",
@@ -80,7 +91,18 @@
      "dashboard"
     ]
    },
-   "hide": "nav[role=tablist]"
+   "hide": "nav[role=tablist]",
+   "short": "forex",
+   "invests": "Forex og råvarer (EUR/USD, guld, olie)",
+   "best": {
+    "path": "/api/strategies",
+    "list": "strategies",
+    "name": [
+     "title"
+    ],
+    "ret": "return_pct",
+    "trades": "trades"
+   }
   },
   {
    "key": "comet",
@@ -117,7 +139,19 @@
      "run"
     ]
    },
-   "hide": "header nav"
+   "hide": "header nav",
+   "short": "nye tokens",
+   "invests": "Nye tokens på Base, Ethereum og BNB Chain",
+   "best": {
+    "path": "/api/strategies",
+    "list": "cards",
+    "name": [
+     "name",
+     "chain_name"
+    ],
+    "ret": "return_pct",
+    "trades": "trades"
+   }
   },
   {
    "key": "delphi",
@@ -159,7 +193,18 @@
      "Regler",
      "[data-tab=regler]"
     ]
-   ]
+   ],
+   "short": "prognosemarkeder",
+   "invests": "Prognosemarkeder (Polymarket og Kalshi)",
+   "best": {
+    "path": "/api/strategies",
+    "list": "strategies",
+    "name": [
+     "name"
+    ],
+    "ret": "return_pct",
+    "trades": "closed"
+   }
   },
   {
    "key": "quasar",
@@ -196,7 +241,18 @@
      "Regler",
      "[data-tab=regler]"
     ]
-   ]
+   ],
+   "short": "krypto-futures",
+   "invests": "Krypto-futures med gearing (Binance/Bybit)",
+   "best": {
+    "path": "/api/overview",
+    "list": "strategies",
+    "name": [
+     "label"
+    ],
+    "ret": "return_pct",
+    "trades": "trades"
+   }
   },
   {
    "key": "orion",
@@ -233,7 +289,18 @@
      "Regler",
      "[data-t=regler]"
     ]
-   ]
+   ],
+   "short": "krypto",
+   "invests": "Store kryptovalutaer (BTC, ETH, SOL m.fl.)",
+   "best": {
+    "path": "/api/strategies",
+    "list": "",
+    "name": [
+     "label"
+    ],
+    "ret": "return_pct",
+    "trades": "trades"
+   }
   },
   {
    "key": "nova",
@@ -271,7 +338,18 @@
      "Desk",
      "#tab-desk"
     ]
-   ]
+   ],
+   "short": "memecoins",
+   "invests": "Nye Solana-memecoins",
+   "best": {
+    "path": "/api/state",
+    "list": "strategies.books",
+    "name": [
+     "name"
+    ],
+    "ret": "return_pct",
+    "trades": "closed"
+   }
   }
  ]
 }

@@ -62,30 +62,52 @@ def cmd_status(bots) -> None:
         print(f"{b['name']:<12} {inst:<12} {run:<11} port {b['port']}")
 
 
+def wait_port_free(bot: dict, seconds: int = 150) -> bool:
+    """En bot, der er ved at lukke, kan holde sin port optaget i op til et par minutter (fx Nova midt i en scanning)."""
+    if not port_open(bot["port"]):
+        return True
+    print(f"… {bot['name']}: port {bot['port']} er stadig optaget af en gammel proces, venter på at den lukker")
+    for _ in range(seconds // 2):
+        time.sleep(2)
+        if not port_open(bot["port"]):
+            return True
+    return False
+
+
 def cmd_run(bots, host: str, port: int) -> None:
     procs = []
+
+    def shutdown() -> None:
+        if not procs:
+            return
+        print("Lukker botterne (kan tage op til to minutter, fordi nogle gør deres scanning færdig) …", flush=True)
+        for _b, p in procs:
+            p.terminate()
+        for _b, p in procs:
+            try:
+                p.wait(timeout=150)
+            except subprocess.TimeoutExpired:
+                p.kill()
+        procs.clear()
+
     for b in bots:
         d = bot_dir(b)
         if not b.get("repo") or not d.exists() or "launch" not in b:
             print(f"· springer {b['name']} over (ikke installeret)")
             continue
+        if not wait_port_free(b):
+            print(f"✗ {b['name']}: port {b['port']} er stadig optaget – starter den ikke")
+            continue
         for cmd in commands(b):
             procs.append((b, subprocess.Popen(cmd, cwd=d, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)))
         print(f"▶ {b['name']} på port {b['port']}")
 
-    def stop(*_):
-        for _b, p in procs:
-            p.terminate()
-        sys.exit(0)
-
-    signal.signal(signal.SIGTERM, stop)
-    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     time.sleep(1.5)
     try:
         serve(host, port, bots)
     finally:
-        for _b, p in procs:
-            p.terminate()
+        shutdown()
 
 
 def main(argv=None) -> int:

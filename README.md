@@ -26,6 +26,12 @@ python3 -m hub run
 Åbn <http://127.0.0.1:8080>. `fetch` henter botterne ind i `bots/`, `run` starter dem (hver på sin egen port, kun lokalt)
 og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ standardbibliotek.
 
+## Overblik
+
+Første fane er **Overblik**: en tabel over, om alle botter kører, og en tabel med hver bots bedste strategi og dens
+afkast i procent (sorteret, med antal lukkede handler). Fanenavnene viser, hvad hver bot investerer i, fx
+*Nova AI (memecoins)*. Hvordan den bedste strategi findes, står pr. bot under `best` i `bots.json`.
+
 ## Sådan virker det
 
 * Hver bot beholder sit eget dashboard. Hubben sender `/b/<bot>/…` videre til det (kun GET) og skjuler botens egen

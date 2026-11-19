@@ -9,6 +9,7 @@ import re
 import socket
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -40,6 +41,50 @@ def inject(html: bytes, key: str, hide: str) -> bytes:
     m = re.search(r"<head[^>]*>", text, re.I)
     text = text[:m.end()] + snippet + text[m.end():] if m else snippet + text
     return text.encode("utf-8")
+
+
+def upstream(bot: dict, sub: str, query: str = "", timeout: float = 15):
+    """GET mod botens eget dashboard. Returnerer (statuskode, content-type, body); kaster OSError hvis den ikke svarer."""
+    url = f"http://127.0.0.1:{bot['port']}{sub}" + (f"?{query}" if query else "")
+    req = urllib.request.Request(url)
+    auth = os.environ.get(f"HUB_UPSTREAM_AUTH_{bot['key'].upper()}")   # fx "user:kode" til Delphis dashboard
+    if auth:
+        req.add_header("Authorization", "Basic " + base64.b64encode(auth.encode()).decode())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, r.headers.get("Content-Type", "application/octet-stream"), r.read()
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers.get("Content-Type", "text/plain"), e.read()
+
+
+def extract_best(data, cfg: dict) -> dict | None:
+    """Finder strategien med højest afkast i et dashboards JSON ud fra reglen i bots.json."""
+    rows = data
+    for part in [p for p in cfg.get("list", "").split(".") if p]:
+        rows = rows.get(part) if isinstance(rows, dict) else None
+    rows = [r for r in (rows or []) if isinstance(r, dict) and isinstance(r.get(cfg["ret"]), (int, float))]
+    if not rows:
+        return None
+    top = max(rows, key=lambda r: r[cfg["ret"]])
+    name = " · ".join(str(top[k]) for k in cfg["name"] if top.get(k))
+    return {"name": name, "return_pct": round(top[cfg["ret"]], 2), "trades": top.get(cfg.get("trades", "")) or 0,
+            "count": len(rows), "positive": sum(1 for r in rows if r[cfg["ret"]] > 0)}
+
+
+def bot_overview(bot: dict) -> dict:
+    out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
+           "configured": bool(bot.get("repo")), "up": port_open(bot["port"]), "mode": "live", "best": None}
+    ln = bot.get("launch") or {}
+    if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
+        out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
+    if out["up"] and bot.get("best"):
+        try:
+            code, _ctype, body = upstream(bot, bot["best"]["path"], timeout=5)
+            if code == 200:
+                out["best"] = extract_best(json.loads(body), bot["best"])
+        except (OSError, ValueError):
+            pass
+    return out
 
 
 def make_handler(bots: list[dict]):
@@ -81,8 +126,12 @@ def make_handler(bots: list[dict]):
                     return self._send(200, "text/html; charset=utf-8", SHELL.read_bytes())
                 if path == "/api/bots":
                     out = [{"key": b["key"], "name": b["name"], "desc": b.get("desc", ""),
-                            "tabs": [[t[0], t[1], t[2]] for t in b.get("tabs", [])],
+                            "short": b.get("short", ""), "tabs": [[t[0], t[1], t[2]] for t in b.get("tabs", [])],
                             "configured": bool(b.get("repo")), "up": port_open(b["port"])} for b in bots]
+                    return self._send(200, "application/json", json.dumps(out).encode())
+                if path == "/api/overview":
+                    with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
+                        out = list(ex.map(bot_overview, bots))
                     return self._send(200, "application/json", json.dumps(out).encode())
                 m = re.match(r"^/b/([a-z0-9_-]+)(/.*)?$", path)
                 if m and m.group(1) in by_key:
@@ -96,16 +145,8 @@ def make_handler(bots: list[dict]):
                 self._send(500, "application/json", b'{"error": "internal error"}')
 
         def _proxy(self, bot: dict, sub: str, query: str):
-            url = f"http://127.0.0.1:{bot['port']}{sub}" + (f"?{query}" if query else "")
-            req = urllib.request.Request(url)
-            auth = os.environ.get(f"HUB_UPSTREAM_AUTH_{bot['key'].upper()}")   # fx "user:kode" til Delphis dashboard
-            if auth:
-                req.add_header("Authorization", "Basic " + base64.b64encode(auth.encode()).decode())
             try:
-                with urllib.request.urlopen(req, timeout=15) as r:
-                    code, ctype, body = r.status, r.headers.get("Content-Type", "application/octet-stream"), r.read()
-            except urllib.error.HTTPError as e:
-                code, ctype, body = e.code, e.headers.get("Content-Type", "text/plain"), e.read()
+                code, ctype, body = upstream(bot, sub, query)
             except (urllib.error.URLError, OSError):
                 msg = f"{bot['name']} kører ikke på port {bot['port']}.".encode()
                 return self._send(502, "text/plain; charset=utf-8", msg)
