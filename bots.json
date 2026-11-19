@@ -16,7 +16,10 @@
    "hide": "nav[role=tablist]",
    "short": "forex",
    "invests": "Forex og råvarer (EUR/USD, guld, olie)",
-   "adapter": "forex"
+   "adapter": "forex",
+   "hosts": [
+    "query1.finance.yahoo.com"
+   ]
   },
   {
    "key": "meridian",
@@ -34,7 +37,10 @@
    "hide": "nav[role=tablist]",
    "short": "forex",
    "invests": "Forex og råvarer (EUR/USD, guld, olie)",
-   "adapter": "forex"
+   "adapter": "forex",
+   "hosts": [
+    "query1.finance.yahoo.com"
+   ]
   },
   {
    "key": "comet",
@@ -52,7 +58,12 @@
    "hide": "header nav",
    "short": "nye tokens",
    "invests": "Nye tokens på Base, Ethereum og BNB Chain",
-   "adapter": "comet"
+   "adapter": "comet",
+   "hosts": [
+    "api.dexscreener.com",
+    "api.geckoterminal.com",
+    "api.gopluslabs.io"
+   ]
   },
   {
    "key": "delphi",
@@ -75,7 +86,12 @@
    "hide": "nav[role=tablist]",
    "short": "prognosemarkeder",
    "invests": "Prognosemarkeder (Polymarket og Kalshi)",
-   "adapter": "delphi"
+   "adapter": "delphi",
+   "hosts": [
+    "gamma-api.polymarket.com",
+    "clob.polymarket.com",
+    "api.elections.kalshi.com"
+   ]
   },
   {
    "key": "quasar",
@@ -93,7 +109,11 @@
    "hide": "header nav, body > nav, nav",
    "short": "krypto-futures",
    "invests": "Krypto-futures med gearing (Binance/Bybit)",
-   "adapter": "quasar"
+   "adapter": "quasar",
+   "hosts": [
+    "fapi.binance.com",
+    "api.bybit.com"
+   ]
   },
   {
    "key": "orion",
@@ -111,7 +131,11 @@
    "hide": "#tabs",
    "short": "krypto",
    "invests": "Store kryptovalutaer (BTC, ETH, SOL m.fl.)",
-   "adapter": "orion"
+   "adapter": "orion",
+   "hosts": [
+    "data-api.binance.vision",
+    "api.binance.com"
+   ]
   },
   {
    "key": "nova",
@@ -130,7 +154,14 @@
    "hide": "#tabs",
    "short": "memecoins",
    "invests": "Nye Solana-memecoins",
-   "adapter": "nova"
+   "adapter": "nova",
+   "hosts": [
+    "api.dexscreener.com",
+    "api.geckoterminal.com",
+    "api.rugcheck.xyz",
+    "lite-api.jup.ag",
+    "api.mainnet-beta.solana.com"
+   ]
   }
  ]
 }

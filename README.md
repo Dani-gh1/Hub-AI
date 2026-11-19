@@ -96,6 +96,17 @@ Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`,
 python3 -m unittest discover -s tests -t .
 ```
 
+## Hvis en bot ikke scanner: `hub doctor`
+
+```bash
+python3 -m hub doctor
+```
+
+Tester alle adresser, botterne henter data fra, og forklarer på dansk, hvad der er galt: børsen er spærret i dit land (HTTP 451/403),
+DNS finder ikke adressen, eller netværket/routeren/et antivirusprogram overvåger forbindelsen, så certifikatet afvises
+(*self-signed certificate in certificate chain*). Den nævner også, hvem der har udstedt certifikatet. Oversigten viser desuden den
+seneste fejllinje under hver bot.
+
 ## Datakilder og nøgler
 
 Alle botter kan scanne markedet uden nøgler eller opsætning:

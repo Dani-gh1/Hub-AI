@@ -36,7 +36,7 @@ def load_bots(path: Path | None = None) -> list[dict]:
             if m.group(1):
                 b["host"] = m.group(1)
         elif os.environ.get(f"HUB_DISABLE_{key}") == "1":
-            b["disabled"], b["note"] = True, "Slået fra på denne maskine."
+            b["disabled"], b["note"] = True, "Slået fra på denne maskine. Botten kører et andet sted (fx din server)."
     return bots
 
 
@@ -98,13 +98,14 @@ LOG_DIR = Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs"))
 
 def last_problem(bot: dict) -> str:
     """Sidste fejllinje i botens log (til at forklare, hvorfor den ikke scanner), ellers tom tekst."""
-    try:
-        tail = (LOG_DIR / f"{bot['key']}.log").read_bytes()[-8000:].decode("utf-8", "replace")
-    except OSError:
-        return ""
-    for line in reversed(tail.splitlines()):
-        if re.search(r"Error|Exception|fejlede|svarer ikke|spærret|Traceback", line) and 'File "' not in line:
-            return line.strip()[-170:]
+    for name in (f"{bot['key']}-motor.log", f"{bot['key']}.log"):      # motoren (hvis botten har en) skriver typisk fejlene
+        try:
+            tail = (LOG_DIR / name).read_bytes()[-8000:].decode("utf-8", "replace")
+        except OSError:
+            continue
+        for line in reversed(tail.splitlines()):
+            if re.search(r"Error|Exception|fejlede|svarer ikke|spærret|Traceback", line) and 'File "' not in line:
+                return line.strip()[-170:]
     return ""
 
 
@@ -130,6 +131,15 @@ def best_of(strategies: list[dict]) -> dict | None:
             "count": len(rows), "positive": sum(1 for r in rows if r["return_pct"] > 0)}
 
 
+BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
+
+
+def not_installed(bot: dict) -> bool:
+    """En bot med repo, som hverken kører et andet sted eller er slået fra, men som ikke er hentet til denne maskine."""
+    return bool(bot.get("repo")) and not bot.get("external") and not bot.get("disabled") \
+        and not (BOTS_DIR / bot["repo"].split("/")[-1]).exists()
+
+
 def bot_overview(bot: dict) -> dict:
     out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
            "configured": bool(bot.get("repo")) and not bot.get("disabled"), "note": bot.get("note", ""),
@@ -138,6 +148,10 @@ def bot_overview(bot: dict) -> dict:
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
     out["scan_age"], out["issue"], out["trades"] = None, "", None
+    out["note_short"] = "Slået fra her" if bot.get("disabled") else ""
+    if not_installed(bot):
+        out["configured"], out["up"] = False, False
+        out["note"], out["note_short"] = "Ikke hentet til denne maskine. Kør: python3 -m hub fetch", "Ikke hentet her"
     if out["up"]:
         try:
             data = bot_data(bot)
@@ -148,7 +162,7 @@ def bot_overview(bot: dict) -> dict:
         except (OSError, ValueError, KeyError, TypeError):
             pass
         if out["scan_age"] is None or out["scan_age"] > STALE_AFTER_S:
-            out["issue"] = last_problem(bot)
+            out["issue"] = data.get("problem") or last_problem(bot)
     return out
 
 
@@ -197,7 +211,7 @@ def make_handler(bots: list[dict]):
                 if path == "/api/bots":
                     out = [{"key": b["key"], "name": b["name"], "desc": b.get("desc", ""),
                             "short": b.get("short", ""),
-                            "configured": bool(b.get("repo")) and not b.get("disabled"), "note": b.get("note", ""),
+                            "configured": bool(b.get("repo")) and not b.get("disabled"), "note": b.get("note", ""), "note_short": "Slået fra her" if b.get("disabled") else "",
                             "up": not b.get("disabled") and port_open(b["port"], bot_host(b))} for b in bots]
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":

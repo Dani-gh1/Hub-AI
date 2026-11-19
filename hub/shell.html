@@ -486,7 +486,8 @@ function renderHub(rows) {
   view(
     h("div", { class: "grid kpis" },
       kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),
-      kpi("Botter der scanner", `${rows.filter((b) => b.up && b.scan_age != null && b.scan_age <= STALE).length} af ${rows.length}`, `${live} kører`),
+      kpi("Botter der scanner", `${rows.filter((b) => b.up && b.scan_age != null && b.scan_age <= STALE).length} af ${rows.filter((b) => b.configured).length}`,
+        rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${live} kører`),
       kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct))),
     h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Kører de?"), h("p", {}, "Status for alle botter lige nu")),
       h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", { class: "hide-m" }, "Investerer i"), h("th", {}, "Status"),
@@ -494,11 +495,11 @@ function renderHub(rows) {
         h("th", { class: "n" }, h("span", { class: "hide-m" }, "Strategier i plus"), h("span", { class: "under" }, "I plus")))),
         h("tbody", {}, rows.map((b) => {
           const stale = b.up && b.scan_age != null && b.scan_age > STALE;
-          const text = !b.configured ? (b.note ? "Slået fra her" : "Ikke koblet på") : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : stale ? "Scanner ikke" : b.scan_age == null ? "Kører" : "Scanner";
+          const text = !b.configured ? (b.note_short || (b.note ? "Ikke tilgængelig" : "Ikke koblet på")) : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : stale ? "Scanner ikke" : b.scan_age == null ? "Kører" : "Scanner";
           const dot = !b.configured ? "" : !b.up ? "down" : stale ? "warn" : "up";
           return h("tr", {}, h("td", { class: "name" }, link(b), h("span", { class: "under" }, b.invests || "")), h("td", { class: "hide-m" }, b.invests || "–"),
             h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + dot }), text), h("span", { class: "under" }, b.up ? "Scannet " + ago(b.scan_age) + (b.trades ? " · " + (b.trades.open + b.trades.closed ? `${b.trades.open} åbne, ${b.trades.closed} lukkede` : "ingen handler endnu") : "") : ""),
-              b.issue ? h("div", { class: "issue", title: b.issue }, b.issue) : null),
+              b.issue || (b.note && !b.configured) ? h("div", { class: "issue", title: b.issue || b.note }, b.issue || b.note) : null),
             h("td", { class: "hide-m " + (stale ? "neg" : "mute") }, b.up ? ago(b.scan_age) : "–"),
             h("td", { class: "hide-m" }, b.trades ? (b.trades.open + b.trades.closed ? `${b.trades.open} åbne · ${b.trades.closed} lukkede` : "Ingen endnu") : "–"),
             h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));

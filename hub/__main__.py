@@ -4,6 +4,7 @@ serve  kun hubben (botterne kører allerede på deres egne porte)
 run    starter alle installerede botter og hubben
 fetch  henter manglende botter fra GitHub ind i bots/
 status viser hvad der er installeret og kører
+doctor tester botternes datakilder og forklarer, hvis noget er spærret eller overvåget på dit netværk
 """
 from __future__ import annotations
 
@@ -92,12 +93,12 @@ def cmd_run(bots, host: str, port: int) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="hub", description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("cmd", choices=["serve", "run", "fetch", "status"])
+    ap.add_argument("cmd", choices=["serve", "run", "fetch", "status", "doctor"])
     ap.add_argument("--host", default=os.environ.get("HUB_HOST", "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("HUB_PORT", "8080")))
     a = ap.parse_args(argv)
     bots = load_bots()
-    {"fetch": lambda: cmd_fetch(bots), "status": lambda: cmd_status(bots),
+    {"fetch": lambda: cmd_fetch(bots), "status": lambda: cmd_status(bots), "doctor": lambda: sys.exit(1 if __import__("hub.doctor", fromlist=["run"]).run(bots) else 0),
      "run": lambda: cmd_run(bots, a.host, a.port), "serve": lambda: serve(a.host, a.port, bots)}[a.cmd]()
     return 0
 

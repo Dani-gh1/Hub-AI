@@ -190,8 +190,12 @@ def delphi(get):
         row = trade_row(t.get("strategy_name"), t.get("title"), t.get("side"), t.get("opened_ts") if is_open else (t.get("closed_ts") or t.get("opened_ts")),
                         res, t.get("reason") if is_open else t.get("exit_reason"))
         (opened if is_open else closed).append(row)
+    run = ov.get("last_run") or {}
+    problem = last.get("error") or run.get("error") or ""
+    if not problem and state.get("cycles_failed") and not state.get("cycles_ok"):
+        problem = f"{state['cycles_failed']} runder er fejlet, ingen er lykkedes endnu"
     return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
-            "scan": ts(last.get("finished_utc"))}
+            "scan": ts(last.get("finished_utc")), "problem": str(problem)[:170]}
 
 
 def quasar(get):

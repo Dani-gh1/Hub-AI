@@ -70,6 +70,27 @@ class HubTests(unittest.TestCase):
             finally:
                 srv.LOG_DIR = old
 
+    def test_status_for_bots_that_are_disabled_or_not_downloaded_here(self):
+        base = {"key": "z", "name": "Z", "port": 1, "adapter": "nova", "short": "", "invests": ""}
+        off = srv.bot_overview({**base, "repo": "x/y", "disabled": True, "note": "slået fra"})
+        self.assertEqual((off["configured"], off["up"], off["note_short"]), (False, False, "Slået fra her"))
+        missing = srv.bot_overview({**base, "repo": "x/findes-ikke-hos-os"})
+        self.assertEqual((missing["configured"], missing["up"], missing["note_short"]), (False, False, "Ikke hentet her"))
+        self.assertIn("hub fetch", missing["note"])
+        self.assertFalse(srv.not_installed({**base, "repo": "x/y", "external": True}))     # en ekstern bot behøver ikke være hentet
+
+    def test_delphi_problems_are_read_from_its_data_and_its_motor_log(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "delphi-motor.log").write_text("start\nERROR runde fejlede: HTTP 403 fra polymarket\n")
+            (Path(d) / "delphi.log").write_text("Dashboard kører\n")
+            old = srv.LOG_DIR
+            srv.LOG_DIR = Path(d)
+            try:
+                self.assertIn("polymarket", srv.last_problem({"key": "delphi"}))
+            finally:
+                srv.LOG_DIR = old
+
     def test_every_bot_has_label(self):
         for b in load_bots():
             self.assertTrue(b["short"] and b["invests"], b["key"])
@@ -103,7 +124,7 @@ class HubTests(unittest.TestCase):
 
     def test_proxy_and_status(self):
         up = start(Fake)
-        bots = [{"key": "a", "name": "A", "repo": "x/y", "port": up.server_port, "adapter": "nova", "hide": "nav"},
+        bots = [{"key": "a", "name": "A", "repo": "x/y", "port": up.server_port, "adapter": "nova", "hide": "nav", "external": True},
                 {"key": "b", "name": "B", "repo": None, "port": 1, "adapter": "nova"}]
         hub = start(make_handler(bots))
         base = f"http://127.0.0.1:{hub.server_port}"
