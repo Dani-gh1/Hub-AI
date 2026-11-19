@@ -116,6 +116,18 @@ Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`,
 python3 -m unittest discover -s tests -t .
 ```
 
+## Flyt til en ny server
+
+Kør på din Mac (den har ssh-nøglen til begge servere):
+
+```bash
+./deploy/migrate.sh <gammel-server> <ny-server> [ssh-nøgle]
+```
+
+Scriptet stopper den gamle server, kopierer hubben, alle botter, deres data, `/etc/hub.env` og Nova direkte over, slår alle botter til,
+installerer hubben og Tailscale på den nye og slår den gamle fra (så ingen bot får to papirkonti). Den gamle servers data bliver liggende
+som en ekstra kopi. `HUB_DRY_RUN=1` viser kun, hvad der ville ske. Alle 22 botter kræver ca. 6 GB hukommelse eller mere (fx Oracle Ampere A1).
+
 ## Fra hvor som helst, når som helst
 
 Kør på den maskine, hvor hubben kører (helst en server, der altid er tændt). Vælg, hvem der skal kunne åbne det:
