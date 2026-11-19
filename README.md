@@ -1,6 +1,6 @@
 # Papirdesk Hub
 
-Én app med syv faner – én pr. papirhandels-bot – og underfaner under hver bot.
+Én app med ti faner – én pr. papirhandels-bot – og underfaner under hver bot.
 Kun papirhandel med fiktive penge.
 
 | Fane | Repo |
@@ -12,6 +12,9 @@ Kun papirhandel med fiktive penge.
 | Quasar AI (krypto-futures) | Dani-gh1/Quasar-AI |
 | Orion AI (krypto) | Dani-gh1/Orion-AI |
 | Nova AI (memecoins) | Dani-gh1/Coins |
+| Atlas Global AI (udenlandske aktier og ETF'er) | Dani-gh1/Atlas (egen bog, `bots.json`) |
+| Orion Mid AI (mellemstore og små krypto) | Dani-gh1/Orion-AI (egen bog) |
+| Nova Classic AI (etablerede memecoins) | Dani-gh1/Coins (`variants/nova-classic.toml`) |
 
 Hver bot har de samme fire sider, så alt ser ens ud:
 
@@ -36,7 +39,7 @@ og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ stand
 ## Rigtige penge og omkostninger
 
 Hver bot har en knap **💰 Rigtige penge** øverst. Her skriver du din kapital, gebyr og spread/slip pr. side, evt. et fast gebyr,
-hvor stor en del af kontoen hver handel fylder, og skat af gevinst. Slås det til, vises afkast **efter omkostninger** (graf, tabel
+hvor stor en del af kontoen hver handel fylder, og skat af gevinst. Afkast vises som standard **efter omkostninger** (hver bot har egne standardtal i `bots.json` under `costs`; slå fra i panelet) (graf, tabel
 og strategikort, også i kroner). Papirhandlen ændres ikke. Tallet er et skøn: hver lukket handel trækkes ind og ud, en åben kun indgangen.
 Indstillingerne gemmes på hubben i `logs/costs.json` (kræver samme login som resten).
 
@@ -93,6 +96,12 @@ Indstillinger ligger i `/etc/hub.env` (adgangskode, port, `OANDA_TOKEN` til Atla
 * Adresser kan deles: `#quasar/regler`.
 * Hubben åbner kun på 127.0.0.1. Skal den åbnes på netværket: sæt `HUB_PASSWORD` og start med `--host 0.0.0.0`.
   Har et dashboard sit eget login (fx Delphi), sæt `HUB_UPSTREAM_AUTH_DELPHI=bruger:kode`.
+
+## Varianter: nye botter på samme kode
+
+En bot kan genbruge en anden bots kode og kun have egne indstillinger. I `bots.json` giver `launch.overrides` (`{modul: {indstilling: værdi}}`)
+nye værdier, før botten starter (`+NAVN` lægger til en liste/mængde, `-NAVN` fjerner strategier med de navne), og `launch.env` giver egne filer,
+så papirbogen ikke blandes. `kind: "script"` gør det samme for en bot, der startes med et script (Atlas). Eksempler: Atlas Global, Orion Mid og Nova Classic.
 
 ## Tilføj en ny bot
 

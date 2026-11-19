@@ -49,26 +49,43 @@ def bot_dir(bot: dict) -> Path:
     return BOTS_DIR / bot["repo"].split("/")[-1] if bot.get("repo") else BOTS_DIR / bot["key"]
 
 
+PATCH_PRELUDE = (
+    "import sys, runpy, importlib; c = importlib.import_module(%r); c.DASHBOARD_PORT = %d; c.DASHBOARD_HOST = '127.0.0.1'; "
+    "ov = %r\n"
+    "for mod, attrs in ov.items():\n"
+    "    m = importlib.import_module(mod)\n"
+    "    for k, v in attrs.items():\n"
+    "        n = k.lstrip('+-'); old = getattr(m, n, None)\n"
+    "        if k[0] == '+': v = type(old)([*old, *v]) if not isinstance(old, (set, frozenset)) else old | set(v)\n"
+    "        elif k[0] == '-': v = [x for x in old if (x.get('name') if isinstance(x, dict) else x) not in v]\n"
+    "        elif isinstance(old, (set, frozenset, tuple)) and isinstance(v, list): v = type(old)(v)\n"
+    "        setattr(m, n, v)\n")
+
+
 def commands(bot: dict) -> list[tuple[list[str], dict]]:
     """Kommandoer (og ekstra miljøvariabler) der starter botten med dashboard kun på 127.0.0.1:<port>.
-    Nogle botter bruger to processer (dashboard og motor)."""
+    Nogle botter bruger to processer (dashboard og motor). Flere botter kan dele samme kode (repo) og kun adskille sig ved
+    egne indstillinger: "overrides" ({modul: {indstilling: værdi}}) ændrer botens config, før den starter, og "env" giver den egne filer."""
     ln, port = bot["launch"], bot["port"]
+    fmt = lambda v: str(v).format(port=port, root=ROOT)
+    env = {k: fmt(v) for k, v in ln.get("env", {}).items()}
     if ln["kind"] == "flag":
-        return [([sys.executable, "-m", "desk", *[a.format(port=port) for a in ln["args"]]], {})]
+        return [([sys.executable, "-m", "desk", *[fmt(a) for a in ln["args"]]], env)]
     if ln["kind"] == "env":      # botten læser port og vært fra miljøet (fx DESK_PORT)
-        env = {k: str(v).format(port=port) for k, v in ln.get("env", {}).items()}
         return [([sys.executable, *ln["args"]], env)]
+    if ln["kind"] == "script":   # en script-bot (fx bot.py), hvis config ændres, før den starter
+        code = PATCH_PRELUDE % (ln["config"], port, ln.get("overrides", {})) + \
+            "sys.argv = %r\nrunpy.run_path(%r, run_name='__main__')" % ([ln["args"][0], *[fmt(a) for a in ln["args"][1:]]], ln["args"][0])
+        return [([sys.executable, "-c", code], {**{"DESK_PORT": str(port), "DESK_HOST": "127.0.0.1"}, **env})]
     out = []
     all_args = [ln["args"], *ln.get("also", [])]
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         all_args = [ln["fallback_args"]]   # fx kun dashboardet, når datakildens nøgle mangler
         print(f"· {bot['name']}: {ln['needs_env']} er ikke sat – viser kun dashboardet (ingen live handler)")
     for args in all_args:
-        code = ("import sys, runpy, importlib; c = importlib.import_module(%r); "
-                "c.DASHBOARD_PORT = %d; c.DASHBOARD_HOST = '127.0.0.1'; "
-                "sys.argv = ['desk'] + %r; runpy.run_module('desk', run_name='__main__')"
-                % (ln["config"], port, args))
-        out.append(([sys.executable, "-c", code], {}))
+        code = PATCH_PRELUDE % (ln["config"], port, ln.get("overrides", {})) + \
+            "sys.argv = ['desk'] + %r\nrunpy.run_module('desk', run_name='__main__')" % (args,)
+        out.append(([sys.executable, "-c", code], env))
     return out
 
 

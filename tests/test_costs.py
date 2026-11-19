@@ -9,7 +9,7 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-from hub.server import clean_costs, make_handler
+from hub.server import clean_costs, make_handler, net_strategies
 
 
 class CleanTests(unittest.TestCase):
@@ -18,12 +18,25 @@ class CleanTests(unittest.TestCase):
         self.assertEqual((c["capital"], c["fee_pct"], c["pos_pct"], c["tax_pct"]), (0, 20, 0.1, 0.0))
         self.assertNotIn("evil", c)
         self.assertNotIn("<", c["currency"])
-        self.assertFalse(clean_costs(None)["enabled"])
+        self.assertTrue(clean_costs(None)["enabled"])         # efter omkostninger som standard
+        self.assertEqual(clean_costs(None, {"slip_pct": 1.5})["slip_pct"], 1.5)      # botten egne standardtal
 
     def test_rejects_nan_and_bool(self):
         c = clean_costs({"capital": float("nan"), "fee_pct": True})
         self.assertEqual(c["capital"], 10000.0)
         self.assertEqual(c["fee_pct"], 0.1)
+
+
+class NetTests(unittest.TestCase):
+    def test_costs_reduce_return_per_trade_and_tax_only_on_gain(self):
+        c = clean_costs({"capital": 10000, "fee_pct": 0.1, "slip_pct": 0.05, "pos_pct": 10, "tax_pct": 0})
+        out = net_strategies([{"return_pct": 5.0, "trades": 40, "open": 2}, {"return_pct": None}], c)
+        self.assertAlmostEqual(out[0]["return_pct"], 5.0 - 40 * 0.03 - 2 * 0.015, places=6)      # 0,03 % af kontoen pr. handel
+        self.assertIsNone(out[1]["return_pct"])
+        t = clean_costs({"fee_pct": 0, "slip_pct": 0, "tax_pct": 25})
+        self.assertEqual(net_strategies([{"return_pct": 8.0, "trades": 0}, {"return_pct": -4.0, "trades": 0}], t)[0]["return_pct"], 6.0)
+        self.assertEqual(net_strategies([{"return_pct": -4.0, "trades": 0}], t)[0]["return_pct"], -4.0)
+        self.assertEqual(net_strategies([{"return_pct": 5.0, "trades": 9}], clean_costs({"enabled": False}))[0]["return_pct"], 5.0)
 
 
 class ServerTests(unittest.TestCase):
@@ -48,7 +61,7 @@ class ServerTests(unittest.TestCase):
 
     def test_roundtrip(self):
         base = self.serve()
-        self.assertEqual(self.call(base + "/api/costs/atlas")[1]["enabled"], False)
+        self.assertEqual(self.call(base + "/api/costs/atlas")[1]["enabled"], True)
         st, saved = self.call(base + "/api/costs/atlas", {"enabled": True, "capital": 5000, "fee_pct": 0.25}, {"Content-Type": "application/json"})
         self.assertEqual(st, 200)
         self.assertEqual(self.call(base + "/api/costs/atlas")[1], saved)

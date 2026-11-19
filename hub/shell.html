@@ -308,7 +308,7 @@ async function load(force) {
   }
 }
 /* ---------- rigtige penge: kapital og omkostninger ---------- */
-const COST_DEF = { enabled: false, capital: 10000, currency: "kr.", fee_pct: 0.1, slip_pct: 0.05, fixed_fee: 0, pos_pct: 10, tax_pct: 0 };
+const COST_DEF = { enabled: true, capital: 10000, currency: "kr.", fee_pct: 0.1, slip_pct: 0.05, fixed_fee: 0, pos_pct: 10, tax_pct: 0 };
 const costs = () => COSTS[curKey] || COST_DEF;
 const money = (v, c) => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v), Math.abs(v) < 100 ? 2 : 0) + " " + c.currency;
 /* Omkostning pr. handel i % af kontoen: positionens andel af kontoen x (gebyr + slip) x 2 (ind og ud) + faste gebyrer. En åben position har kun betalt indgangen. */

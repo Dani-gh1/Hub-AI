@@ -24,7 +24,11 @@
     "api.nasdaq.com",
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
-   ]
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.05
+   }
   },
   {
    "key": "meridian",
@@ -45,7 +49,11 @@
    "adapter": "forex",
    "hosts": [
     "query1.finance.yahoo.com"
-   ]
+   ],
+   "costs": {
+    "fee_pct": 0.0,
+    "slip_pct": 0.03
+   }
   },
   {
    "key": "comet",
@@ -68,7 +76,11 @@
     "api.dexscreener.com",
     "api.geckoterminal.com",
     "api.gopluslabs.io"
-   ]
+   ],
+   "costs": {
+    "fee_pct": 0.3,
+    "slip_pct": 1.5
+   }
   },
   {
    "key": "delphi",
@@ -96,7 +108,11 @@
     "gamma-api.polymarket.com",
     "clob.polymarket.com",
     "api.elections.kalshi.com"
-   ]
+   ],
+   "costs": {
+    "fee_pct": 0.5,
+    "slip_pct": 1.0
+   }
   },
   {
    "key": "quasar",
@@ -118,7 +134,11 @@
    "hosts": [
     "fapi.binance.com",
     "api.bybit.com"
-   ]
+   ],
+   "costs": {
+    "fee_pct": 0.05,
+    "slip_pct": 0.05
+   }
   },
   {
    "key": "orion",
@@ -140,7 +160,11 @@
    "hosts": [
     "data-api.binance.vision",
     "api.binance.com"
-   ]
+   ],
+   "costs": {
+    "fee_pct": 0.1,
+    "slip_pct": 0.05
+   }
   },
   {
    "key": "nova",
@@ -166,7 +190,198 @@
     "api.rugcheck.xyz",
     "lite-api.jup.ag",
     "api.mainnet-beta.solana.com"
-   ]
+   ],
+   "costs": {
+    "fee_pct": 0.3,
+    "slip_pct": 1.5
+   }
+  },
+  {
+   "key": "atlasglobal",
+   "name": "Atlas Global AI",
+   "repo": "Dani-gh1/Atlas",
+   "port": 8808,
+   "desc": "Aktier og ETF'er fra hele verden",
+   "launch": {
+    "kind": "script",
+    "config": "config",
+    "args": [
+     "bot.py"
+    ],
+    "env": {
+     "DESK_DATA_DIR": "data-global",
+     "DESK_STATE_FILE": "state-global.json"
+    },
+    "overrides": {
+     "config": {
+      "UNIVERSE_INCLUDE_SP500": false,
+      "TOP_ETFS": [
+       "ACWI",
+       "EFA",
+       "VEA",
+       "VXUS",
+       "EEM",
+       "IEMG",
+       "VWO",
+       "VGK",
+       "EWJ",
+       "EWG",
+       "EWU",
+       "EWQ",
+       "EWL",
+       "EWY",
+       "EWT",
+       "EWZ",
+       "EWW",
+       "FXI",
+       "MCHI",
+       "INDA",
+       "EWA",
+       "EWC",
+       "EZA",
+       "EPOL",
+       "EWD",
+       "EDEN",
+       "IEV",
+       "AAXJ",
+       "KWEB",
+       "EWS"
+      ],
+      "INDEX_SYMBOL": "ACWI"
+     },
+     "desk.universe": {
+      "FALLBACK_STOCKS": {
+       "Information Technology": "TSM ASML SAP INFY CHKP SHOP",
+       "Financials": "HSBC BCS UBS DB BBVA SAN ING TD RY BMO MUFG SMFG NU",
+       "Health Care": "NVO AZN NVS SNY GSK TAK",
+       "Consumer Discretionary": "TM HMC SONY BABA PDD MELI JD",
+       "Consumer Staples": "UL BUD DEO BTI",
+       "Energy": "SHEL BP TTE EQNR PBR E ENB",
+       "Industrials": "CNI CP",
+       "Materials": "BHP RIO VALE SCCO NTR",
+       "Utilities": "NGG",
+       "Communication Services": "VOD AMX SPOT NTES BIDU"
+      }
+     }
+    }
+   },
+   "short": "global",
+   "invests": "Udenlandske aktier (ADR'er) og ETF'er fra Europa, Asien og nye markeder",
+   "adapter": "stocks",
+   "hosts": [
+    "query1.finance.yahoo.com",
+    "api.nasdaq.com",
+    "www.nasdaqtrader.com",
+    "en.wikipedia.org"
+   ],
+   "costs": {
+    "fee_pct": 0.15,
+    "slip_pct": 0.1
+   }
+  },
+  {
+   "key": "orionmid",
+   "name": "Orion Mid AI",
+   "repo": "Dani-gh1/Orion-AI",
+   "port": 8809,
+   "desc": "Mellemstore og små kryptovalutaer på Binance",
+   "launch": {
+    "kind": "patch",
+    "config": "config",
+    "args": [
+     "run"
+    ],
+    "overrides": {
+     "config": {
+      "+SCOUT_EXCLUDE_BASES": [
+       "BTC",
+       "ETH",
+       "BNB",
+       "SOL",
+       "XRP",
+       "DOGE",
+       "ADA",
+       "TRX",
+       "LINK",
+       "AVAX",
+       "TON",
+       "SHIB",
+       "DOT",
+       "LTC",
+       "BCH",
+       "XLM",
+       "HBAR",
+       "SUI",
+       "UNI",
+       "NEAR",
+       "AAVE",
+       "ETC",
+       "ICP",
+       "APT",
+       "ATOM",
+       "FIL"
+      ],
+      "SCOUT_MIN_QUOTE_VOLUME_24H": 1000000,
+      "SCOUT_MAX_SYMBOLS": 60,
+      "FILTER_MAX_SPREAD_PCT": 0.2,
+      "FILTER_MIN_DEPTH_USDT": 40000,
+      "FILTER_MAX_MOVE_1H_PCT": 6.0,
+      "FEE_PCT": 0.1,
+      "FALLBACK_SLIPPAGE_PCT": 0.15,
+      "-STRATEGIES": [
+       "majors",
+       "hold_btc"
+      ],
+      "STATE_FILE": "state-mid.json",
+      "DB_FILE": "desk-mid.sqlite3",
+      "DATA_DIR": "data-mid"
+     }
+    }
+   },
+   "hide": "#tabs",
+   "short": "små krypto",
+   "invests": "Mellemstore og små kryptovalutaer (alt uden for de ca. 25 største)",
+   "adapter": "orion",
+   "hosts": [
+    "data-api.binance.vision",
+    "api.binance.com"
+   ],
+   "costs": {
+    "fee_pct": 0.1,
+    "slip_pct": 0.2
+   }
+  },
+  {
+   "key": "novaclassic",
+   "name": "Nova Classic AI",
+   "repo": "Dani-gh1/Coins",
+   "port": 8810,
+   "desc": "Etablerede Solana-memecoins",
+   "launch": {
+    "kind": "flag",
+    "args": [
+     "run",
+     "--dashboard",
+     "{port}",
+     "--config",
+     "{root}/variants/nova-classic.toml"
+    ]
+   },
+   "hide": "#tabs",
+   "short": "gamle memecoins",
+   "invests": "Etablerede Solana-memecoins (over 30 dage gamle, med rigtig likviditet)",
+   "adapter": "nova",
+   "hosts": [
+    "api.dexscreener.com",
+    "api.geckoterminal.com",
+    "api.rugcheck.xyz",
+    "lite-api.jup.ag",
+    "api.mainnet-beta.solana.com"
+   ],
+   "costs": {
+    "fee_pct": 0.3,
+    "slip_pct": 0.5
+   }
   }
  ]
 }

@@ -124,7 +124,7 @@ def last_problem(bot: dict) -> str:
     return ""
 
 
-COST_DEFAULTS = {"enabled": False, "capital": 10000.0, "currency": "kr.", "fee_pct": 0.1, "slip_pct": 0.05,
+COST_DEFAULTS = {"enabled": True, "capital": 10000.0, "currency": "kr.", "fee_pct": 0.1, "slip_pct": 0.05,
                  "fixed_fee": 0.0, "pos_pct": 10.0, "tax_pct": 0.0}
 COST_LIMITS = {"capital": (0, 1e9), "fee_pct": (0, 20), "slip_pct": (0, 20), "fixed_fee": (0, 1e6), "pos_pct": (0.1, 100), "tax_pct": (0, 100)}
 COST_LOCK = threading.Lock()
@@ -134,10 +134,11 @@ def costs_file() -> Path:
     return Path(os.environ.get("HUB_COSTS_FILE") or ROOT / "logs" / "costs.json")
 
 
-def clean_costs(raw) -> dict:
-    """Gyldige indstillinger ud fra vilkårligt input: ukendte felter droppes, tal begrænses, tekst kortes."""
+def clean_costs(raw, defaults: dict | None = None) -> dict:
+    """Gyldige indstillinger ud fra vilkårligt input: ukendte felter droppes, tal begrænses, tekst kortes.
+    `defaults` er botens egne standardtal (fx højere slip for memecoins), ellers fælles standard."""
     raw = raw if isinstance(raw, dict) else {}
-    out = dict(COST_DEFAULTS)
+    out = {**COST_DEFAULTS, **{k: v for k, v in (defaults or {}).items() if k in COST_DEFAULTS}}
     out["enabled"] = bool(raw.get("enabled", out["enabled"]))
     cur = raw.get("currency")
     if isinstance(cur, str) and cur.strip():
@@ -157,14 +158,33 @@ def load_costs() -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def get_costs(key: str) -> dict:
-    return clean_costs(load_costs().get(key))
+def get_costs(key: str, defaults: dict | None = None) -> dict:
+    saved = load_costs().get(key)
+    return clean_costs({**(defaults or {}), **saved} if isinstance(saved, dict) else defaults, defaults)
 
 
-def save_costs(key: str, raw) -> dict:
+def net_strategies(strategies: list[dict], c: dict) -> list[dict]:
+    """Strategiernes afkast efter omkostninger (samme regnestykke som i dashboardet): hver lukket handel betaler ind og ud,
+    en åben kun indgangen. Position = andel af kontoen pr. handel. Skat tages kun af gevinst."""
+    if not c.get("enabled"):
+        return strategies
+    rt = 2 * (c["fee_pct"] + c["slip_pct"])
+    per = c["pos_pct"] / 100 * rt + (2 * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)
+    out = []
+    for st in strategies:
+        r = st.get("return_pct")
+        if not isinstance(r, (int, float)):
+            out.append(st)
+            continue
+        net = r - ((st.get("trades") or 0) * per + (st.get("open") or 0) * per / 2)
+        out.append({**st, "return_pct": net * (1 - c["tax_pct"] / 100) if net > 0 else net})
+    return out
+
+
+def save_costs(key: str, raw, defaults: dict | None = None) -> dict:
     with COST_LOCK:
         data = load_costs()
-        data[key] = clean_costs(raw)
+        data[key] = clean_costs(raw, defaults)
         f = costs_file()
         f.parent.mkdir(parents=True, exist_ok=True)
         tmp = f.with_suffix(".tmp")
@@ -250,7 +270,7 @@ def bot_overview(bot: dict) -> dict:
     if out["up"]:
         try:
             data = bot_data(bot)
-            out["best"] = best_of(data["strategies"])
+            out["best"] = best_of(net_strategies(data["strategies"], get_costs(bot["key"], bot.get("costs"))))
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
@@ -417,7 +437,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     raw = json.loads(self.rfile.read(n).decode("utf-8"))
                 except ValueError:
                     return self._send(400, "text/plain; charset=utf-8", "ugyldig JSON".encode())
-                self._send(200, "application/json", json.dumps(save_costs(m.group(1), raw)).encode())
+                self._send(200, "application/json", json.dumps(save_costs(m.group(1), raw, by_key[m.group(1)].get("costs"))).encode())
             except (BrokenPipeError, ConnectionResetError):
                 pass
             except Exception:
@@ -452,7 +472,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
-                    return self._send(200, "application/json", json.dumps(get_costs(m.group(1))).encode())
+                    return self._send(200, "application/json", json.dumps(get_costs(m.group(1), by_key[m.group(1)].get("costs"))).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     try:
