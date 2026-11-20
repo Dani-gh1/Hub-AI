@@ -98,9 +98,9 @@ def data_since(data: dict) -> float | None:
 
 
 def bot_data(bot: dict) -> dict:
-    """Fælles format for én bot (cachet i 5 sekunder, så flere faner ikke belaster botten)."""
+    """Fælles format for én bot (cachet i 15 sekunder, så flere faner og besøgende ikke belaster botten)."""
     hit = _cache.get(bot["key"])
-    if hit and time.time() - hit[0] < 5:
+    if hit and time.time() - hit[0] < 15:
         return hit[1]
     data = normalize(bot, lambda sub: upstream(bot, sub, timeout=10))
     data["since"] = data_since(data)
@@ -291,6 +291,49 @@ def bot_overview(bot: dict) -> dict:
     return out
 
 
+class Overview:
+    """Overblikket over alle botter, klar på forhånd. Siden får altid det seneste svar med det samme; er det over FRESH sekunder
+    gammelt, hentes et nyt i baggrunden. Så venter ingen på den langsomste bot, selv på en lille server med mange botter."""
+    FRESH = 15.0
+
+    def __init__(self, bots: list[dict], build=None, now=time.time):
+        self.bots, self.now = bots, now
+        self.build = build or (lambda: self._build())
+        self.rows: list | None = None
+        self.at = 0.0
+        self.lock = threading.Lock()
+        self.busy = False
+
+    def _build(self) -> list:
+        with ThreadPoolExecutor(max_workers=min(8, len(self.bots) or 1)) as ex:     # højst 8 ad gangen: skåner en lille server
+            return list(ex.map(bot_overview, self.bots))
+
+    def _refresh(self) -> None:
+        try:
+            rows = self.build()
+            with self.lock:
+                self.rows, self.at = rows, self.now()
+        finally:
+            self.busy = False
+
+    def get(self) -> list:
+        with self.lock:
+            rows, age = self.rows, self.now() - self.at
+            start = age >= self.FRESH and not self.busy
+            if start:
+                self.busy = True
+        if rows is None:                       # første gang: der er intet at vise endnu, så vent på svaret
+            if start:
+                self._refresh()
+            else:
+                while self.busy and self.rows is None:
+                    time.sleep(0.1)
+            return self.rows or []
+        if start:
+            threading.Thread(target=self._refresh, daemon=True).start()
+        return rows
+
+
 class Throttle:
     """Bremser gætning af adgangskoden: efter MAX_FAILS forkerte forsøg fra samme adresse spærres den, først i BASE sekunder,
     derefter dobbelt så længe for hvert nyt forkert forsøg (højst CAP). Et rigtigt forsøg nulstiller."""
@@ -372,6 +415,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
     throttle = throttle or Throttle()
     public = os.environ.get("HUB_PUBLIC") == "1"
     ratelimit = ratelimit or (RateLimit() if public else None)
+    overview = Overview(bots)
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, ctype: str, body: bytes, extra: dict | None = None):
@@ -475,9 +519,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                         o["since"] = None if b.get("disabled") else collecting_since(o["key"], o["up"])
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
-                    with ThreadPoolExecutor(max_workers=len(bots) or 1) as ex:
-                        out = list(ex.map(bot_overview, bots))
-                    return self._send(200, "application/json", json.dumps(out).encode())
+                    return self._send(200, "application/json", json.dumps(overview.get()).encode())
                 m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     return self._send(200, "application/json", json.dumps(get_costs(m.group(1), by_key[m.group(1)].get("costs"))).encode())
@@ -511,6 +553,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
         def log_message(self, *_a):
             pass
 
+    Handler.overview = overview
     return Handler
 
 
@@ -525,7 +568,9 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
             print("ADVARSEL: ingen adgangskode. Alle, der kender adressen, kan se dashboardet (kun papirhandel).", flush=True)
     if host not in ("127.0.0.1", "localhost") and not os.environ.get("HUB_PASSWORD"):
         print("ADVARSEL: hubben er åben på netværket uden HUB_PASSWORD.")
-    httpd = ThreadingHTTPServer((host, port), make_handler(bots))
+    handler = make_handler(bots)
+    threading.Thread(target=handler.overview.get, daemon=True).start()     # gør overblikket klar, før den første besøgende kommer
+    httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     print(f"Hub: http://{host}:{port}", flush=True)
     try:
