@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import bisect
 import hmac
 import json
 import os
@@ -220,6 +221,88 @@ def best_of(strategies: list[dict]) -> dict | None:
     return out
 
 
+SMART_WINDOW_S = 24 * 3600       # Smart strategi følger den strategi, der har tjent mest i dette vindue
+
+
+def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
+    """Strategier klar til Smart strategi: kurven efter botens egne handelsomkostninger (fordelt jævnt over tid, uden skat),
+    og hvad det koster at sælge eller købe strategiens bog ved et skift: hver åben position (mindst én) betaler gebyr og slip én gang."""
+    on = bool(c.get("enabled"))
+    per = c["pos_pct"] / 100 * 2 * (c["fee_pct"] + c["slip_pct"]) + (2 * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)
+    out = []
+    for st in strategies:
+        cv = [p for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[0], (int, float))
+              and p[0] > 1.0e9 and isinstance(p[1], (int, float))]
+        if len(cv) < 2:
+            continue
+        cv.sort(key=lambda p: p[0])
+        if on:
+            cost = (st.get("trades") or 0) * per + (st.get("open") or 0) * per / 2
+            a, z = cv[0][0], cv[-1][0]
+            cv = [[t, v - cost * ((t - a) / (z - a) if z > a else 1)] for t, v in cv]
+        n = max(1, st.get("open") or 0)
+        side = (min(100.0, n * c["pos_pct"]) / 100 * (c["fee_pct"] + c["slip_pct"])
+                + (n * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)) if on else 0.0
+        out.append({"id": f"{bot['key']}:{st.get('key')}", "name": st.get("name") or str(st.get("key")), "bot": bot["key"],
+                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "side": side, "tax": c["tax_pct"] if on else 0.0})
+    return out
+
+
+def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 1500) -> dict | None:
+    """Smart strategi: gør præcis det samme som den strategi, der har tjent mest de seneste `window` sekunder, og skifter,
+    så snart en anden overhaler den. Regnes igennem historikken skridt for skridt og bruger kun data, der fandtes på det tidspunkt.
+    Hvert skift sælger den gamle strategis positioner og køber den nyes (gebyr og slip). Skat tages til sidst af en gevinst."""
+    series = [(c, [p[0] for p in c["curve"]], [p[1] for p in c["curve"]]) for c in cands if len(c.get("curve") or []) >= 2]
+    if not series:
+        return None
+    t0, t1 = min(s[1][0] for s in series), max(s[1][-1] for s in series)
+    if t1 <= t0:
+        return None
+    step = max(300.0, (t1 - t0) / steps)
+    grid = [t0 + i * step for i in range(int((t1 - t0) // step) + 1)]
+    if grid[-1] < t1:
+        grid.append(t1)
+
+    def at(k, t):
+        _c, xs, ys = series[k]
+        i = bisect.bisect_right(xs, t) - 1
+        return ys[i] if i >= 0 else None
+
+    held, value, prev, paid, curve, switches, scores = None, 0.0, None, 0.0, [], [], {}
+    for t in grid:
+        if held is not None:
+            value += at(held, t) - at(held, prev)
+        scores = {}
+        for k, (_c, _xs, ys) in enumerate(series):
+            v = at(k, t)
+            if v is not None:
+                base = at(k, t - window)
+                scores[k] = v - (ys[0] if base is None else base)
+        if scores:
+            top = max(scores.values())
+            lead = held if held in scores and scores[held] >= top - 1e-9 else max(scores, key=scores.get)
+            if lead != held:
+                fee = (series[held][0]["side"] if held is not None else 0.0) + series[lead][0]["side"]
+                value -= fee
+                paid += fee
+                switches.append({"ts": round(t), "from": series[held][0]["name"] if held is not None else None,
+                                 "from_bot": series[held][0]["bot_name"] if held is not None else None,
+                                 "to": series[lead][0]["name"], "to_bot": series[lead][0]["bot_name"]})
+                held = lead
+        curve.append([round(t), value])
+        prev = t
+    tax = max(s[0]["tax"] for s in series)
+    keep = lambda v: v * (1 - tax / 100) if v > 0 else v
+    if len(curve) > 200:
+        k = len(curve) / 200
+        curve = [curve[int(i * k)] for i in range(200)] + [curve[-1]]
+    cur = series[held][0] if held is not None else None
+    return {"return_pct": round(keep(value), 2), "following": cur and cur["name"], "following_bot": cur and cur["bot_name"],
+            "following_key": cur and cur["bot"], "lead_24h": round(scores.get(held, 0.0), 2) if held is not None else None,
+            "switches": len(switches), "recent": switches[-6:][::-1], "cost_pct": round(paid, 2), "since": round(t0),
+            "curve": [[t, round(keep(v), 3)] for t, v in curve]}
+
+
 BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
 
 
@@ -262,7 +345,7 @@ def collecting_since(key: str, up: bool) -> float | None:
 def bot_overview(bot: dict) -> dict:
     out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
            "configured": bool(bot.get("repo")) and not bot.get("disabled"), "note": bot.get("note", ""),
-           "up": not bot.get("disabled") and port_open(bot["port"], bot_host(bot)), "mode": "live", "best": None}
+           "up": not bot.get("disabled") and port_open(bot["port"], bot_host(bot)), "mode": "live", "best": None, "smart": None}
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
@@ -275,7 +358,11 @@ def bot_overview(bot: dict) -> dict:
     if out["up"]:
         try:
             data = bot_data(bot)
-            out["best"] = best_of(net_strategies(data["strategies"], get_costs(bot["key"], bot.get("costs"))))
+            c = get_costs(bot["key"], bot.get("costs"))
+            out["best"] = best_of(net_strategies(data["strategies"], c))
+            out["_cands"] = smart_candidates(data["strategies"], c, bot)
+            sm = smart_of(out["_cands"])
+            out["smart"] = sm and {k: v for k, v in sm.items() if k != "curve"}
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
@@ -300,6 +387,7 @@ class Overview:
         self.bots, self.now = bots, now
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
+        self.smart: dict | None = None         # Smart strategi på tværs af alle botter
         self.at = 0.0
         self.lock = threading.Lock()
         self.busy = False
@@ -311,8 +399,13 @@ class Overview:
     def _refresh(self) -> None:
         try:
             rows = self.build()
+            cands = [c for r in rows if isinstance(r, dict) for c in r.pop("_cands", None) or []]
+            try:
+                smart = smart_of(cands)
+            except (ValueError, TypeError, KeyError):
+                smart = None
             with self.lock:
-                self.rows, self.at = rows, self.now()
+                self.rows, self.smart, self.at = rows, smart, self.now()
         finally:
             self.busy = False
 
@@ -520,6 +613,9 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     return self._send(200, "application/json", json.dumps(overview.get()).encode())
+                if path == "/api/smart":
+                    overview.get()
+                    return self._send(200, "application/json", json.dumps(overview.smart).encode())
                 m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     return self._send(200, "application/json", json.dumps(get_costs(m.group(1), by_key[m.group(1)].get("costs"))).encode())
