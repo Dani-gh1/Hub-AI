@@ -225,8 +225,7 @@ SMART_WINDOW_S = 24 * 3600       # Smart strategi følger den strategi, der har 
 
 
 def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
-    """Strategier klar til Smart strategi: kurven efter botens egne handelsomkostninger (fordelt jævnt over tid, uden skat),
-    og hvad det koster at sælge eller købe strategiens bog ved et skift: hver åben position (mindst én) betaler gebyr og slip én gang."""
+    """Strategier klar til Smart strategi: kurven efter botens egne handelsomkostninger (fordelt jævnt over tid, uden skat)."""
     on = bool(c.get("enabled"))
     per = c["pos_pct"] / 100 * 2 * (c["fee_pct"] + c["slip_pct"]) + (2 * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)
     out = []
@@ -240,12 +239,13 @@ def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
             cost = (st.get("trades") or 0) * per + (st.get("open") or 0) * per / 2
             a, z = cv[0][0], cv[-1][0]
             cv = [[t, v - cost * ((t - a) / (z - a) if z > a else 1)] for t, v in cv]
-        n = max(1, st.get("open") or 0)
-        side = (min(100.0, n * c["pos_pct"]) / 100 * (c["fee_pct"] + c["slip_pct"])
-                + (n * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)) if on else 0.0
         out.append({"id": f"{bot['key']}:{st.get('key')}", "name": st.get("name") or str(st.get("key")), "bot": bot["key"],
-                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "side": side, "tax": c["tax_pct"] if on else 0.0})
+                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "tax": c["tax_pct"] if on else 0.0,
+                    "capital": c["capital"], "currency": c["currency"]})
     return out
+
+
+SMART_VERSION = 2
 
 
 def smart_file() -> Path:
@@ -254,19 +254,19 @@ def smart_file() -> Path:
 
 def smart_start(now=time.time) -> float:
     """Hvornår Smart strategi startede (unix-tid). Sættes første gang og gemmes, så den fortsætter efter genstart og opdatering.
-    Slet logs/smart-since.json for at starte forfra."""
+    Slet logs/smart-since.json for at starte forfra. Skifter SMART_VERSION, startes der også forfra (fx efter en ændret beregning)."""
     f = smart_file()
     try:
-        v = json.loads(f.read_text(encoding="utf-8")).get("since")
-        if isinstance(v, (int, float)):
-            return float(v)
+        d = json.loads(f.read_text(encoding="utf-8"))
+        if isinstance(d.get("since"), (int, float)) and d.get("version") == SMART_VERSION:
+            return float(d["since"])
     except (OSError, ValueError, AttributeError):
         pass
     v = round(now(), 1)
     try:
         f.parent.mkdir(parents=True, exist_ok=True)
         tmp = f.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"since": v}), encoding="utf-8")
+        tmp.write_text(json.dumps({"since": v, "version": SMART_VERSION}), encoding="utf-8")
         tmp.replace(f)
     except OSError:
         pass
@@ -276,7 +276,8 @@ def smart_start(now=time.time) -> float:
 def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 1500, start: float | None = None) -> dict | None:
     """Smart strategi: gør præcis det samme som den strategi, der har tjent mest de seneste `window` sekunder, og skifter,
     så snart en anden overhaler den. Regnes igennem historikken skridt for skridt og bruger kun data, der fandtes på det tidspunkt.
-    Hvert skift sælger den gamle strategis positioner og køber den nyes (gebyr og slip). Skat tages til sidst af en gevinst."""
+    Som en rigtig konto: beløbet vokser og falder med den fulgte strategis afkast (renters rente), og afkastet er
+    forskellen mellem det, der blev lagt ind, og det, der står på kontoen nu. Skat tages til sidst af en gevinst."""
     series = [(c, [p[0] for p in c["curve"]], [p[1] for p in c["curve"]]) for c in cands if len(c.get("curve") or []) >= 2]
     if not series:
         return None
@@ -295,10 +296,12 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
         i = bisect.bisect_right(xs, t) - 1
         return ys[i] if i >= 0 else None
 
-    held, value, prev, paid, curve, switches, scores = None, 0.0, None, 0.0, [], [], {}
+    held, acct, prev, curve, switches, scores = None, 1.0, None, [], [], {}     # acct: kontoens værdi i forhold til det indlagte
     for t in grid:
         if held is not None:
-            value += at(held, t) - at(held, prev)
+            a, b = at(held, prev), at(held, t)
+            acct = acct * (100 + b) / (100 + a) if 100 + a > 0 else 0.0
+            acct = max(0.0, acct)
         scores = {}
         for k, (_c, _xs, ys) in enumerate(series):
             v = at(k, t)
@@ -309,14 +312,11 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
             top = max(scores.values())
             lead = held if held in scores and scores[held] >= top - 1e-9 else max(scores, key=scores.get)
             if lead != held:
-                fee = (series[held][0]["side"] if held is not None else 0.0) + series[lead][0]["side"]
-                value -= fee
-                paid += fee
                 switches.append({"ts": round(t), "from": series[held][0]["name"] if held is not None else None,
                                  "from_bot": series[held][0]["bot_name"] if held is not None else None,
                                  "to": series[lead][0]["name"], "to_bot": series[lead][0]["bot_name"]})
                 held = lead
-        curve.append([round(t), value])
+        curve.append([round(t), (acct - 1) * 100])
         prev = t
     tax = max(s[0]["tax"] for s in series)
     keep = lambda v: v * (1 - tax / 100) if v > 0 else v
@@ -324,9 +324,12 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
         k = len(curve) / 200
         curve = [curve[int(i * k)] for i in range(200)] + [curve[-1]]
     cur = series[held][0] if held is not None else None
-    return {"return_pct": round(keep(value), 2), "following": cur and cur["name"], "following_bot": cur and cur["bot_name"],
+    caps = [(s[0].get("capital"), s[0].get("currency")) for s in series if s[0].get("capital")]
+    capital, currency = max(set(caps), key=caps.count) if caps else (COST_DEFAULTS["capital"], COST_DEFAULTS["currency"])
+    ret = keep((acct - 1) * 100)
+    return {"return_pct": round(ret, 2), "capital": capital, "currency": currency, "value": round(capital * (1 + ret / 100), 2), "following": cur and cur["name"], "following_bot": cur and cur["bot_name"],
             "following_key": cur and cur["bot"], "lead_24h": round(scores.get(held, 0.0), 2) if held is not None else None,
-            "count": len(series), "bots": len({s[0]["bot"] for s in series}), "switches": len(switches), "recent": switches[-6:][::-1], "cost_pct": round(paid, 2), "since": round(t0),
+            "count": len(series), "bots": len({s[0]["bot"] for s in series}), "switches": len(switches), "recent": switches[-6:][::-1], "since": round(t0),
             "curve": [[t, round(keep(v), 3)] for t, v in curve]}
 
 

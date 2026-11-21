@@ -609,16 +609,17 @@ function smartCard(sm) {
   const wrap = h("div", { class: "chart", style: "height:200px" });
   const box = h("div", { class: "card" }, head,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
-      kpi("Afkast (netto)", pct(sm.return_pct), ["kørt i ", tick(sm.since)], tone(sm.return_pct)),
+      kpi("Afkast", pct(sm.return_pct), ["kørt i ", tick(sm.since)], tone(sm.return_pct)),
+      kpi("På kontoen nu", `${nf(sm.value, 0)} ${sm.currency}`, `lagt ind: ${nf(sm.capital, 0)} ${sm.currency} · ${money(sm.value - sm.capital, sm)}`, tone(sm.value - sm.capital)),
       kpi("Følger nu", sm.following || "–", sm.following_bot ? `${sm.following_bot} · ${pct(sm.lead_24h)} seneste 24 t` : ""),
-      kpi("Skift", String(sm.switches), `gebyr og slip ved skift: −${nf(sm.cost_pct)} %`)),
+      kpi("Skift", String(sm.switches), "gange den har skiftet strategi")),
     wrap,
     sm.recent.length ? h("div", { class: "tw" }, h("table", {},
       h("thead", {}, h("tr", {}, h("th", {}, "Seneste skift"), h("th", { class: "hide-m" }, "Fra"), h("th", {}, "Til"))),
       h("tbody", {}, sm.recent.map((x) => h("tr", {}, h("td", { class: "mute" }, when(x.ts)),
         h("td", { class: "name hide-m" }, x.from ? `${x.from} (${x.from_bot})` : "start"),
         h("td", { class: "name" }, `${x.to} (${x.to_bot})`)))))) : null,
-    h("p", { class: "note" }, "Realistisk skøn: hvert skift sælger den gamle strategis positioner og køber den nyes (gebyr og slip fra Rigtige penge), strategiernes egne handelsomkostninger og skat er trukket fra, og den bruger kun data, der fandtes på tidspunktet."));
+    h("p", { class: "note" }, "Som en rigtig konto: beløbet vokser og falder med den strategi, den følger, og afkastet er forskellen på det, du lagde ind, og det, der står på kontoen nu. Strategiernes egne gebyrer og skat (fra Rigtige penge) er trukket fra."));
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });
   return box;
 }

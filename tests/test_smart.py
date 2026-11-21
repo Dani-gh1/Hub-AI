@@ -9,9 +9,9 @@ H = 3600
 T0 = 1_700_000_000
 
 
-def cand(name, pts, side=0.0, tax=0.0, bot="b"):
+def cand(name, pts, tax=0.0, bot="b"):
     return {"id": f"{bot}:{name}", "name": name, "bot": bot, "bot_name": bot.upper(),
-            "curve": [[T0 + h * H, v] for h, v in pts], "side": side, "tax": tax}
+            "curve": [[T0 + h * H, v] for h, v in pts], "tax": tax, "capital": 10000.0, "currency": "kr."}
 
 
 class SmartTests(unittest.TestCase):
@@ -33,13 +33,19 @@ class SmartTests(unittest.TestCase):
         self.assertEqual(sm["following"], "B")
         self.assertLess(sm["return_pct"], 3)
 
-    def test_each_switch_pays_to_sell_the_old_book_and_buy_the_new(self):
-        a = cand("A", [(0, 0), (24, 10), (48, 10)], side=0.5)
-        b = cand("B", [(0, 0), (24, 2), (48, 14)], side=0.5)
-        free = smart_of([{**a, "side": 0}, {**b, "side": 0}], steps=48)
-        paid = smart_of([a, b], steps=48)
-        self.assertAlmostEqual(paid["cost_pct"], 0.5 + (paid["switches"] - 1) * 1.0, places=2)
-        self.assertAlmostEqual(free["return_pct"] - paid["return_pct"], paid["cost_pct"], places=1)
+    def test_works_like_a_real_account_with_compounding_and_no_switch_fees(self):
+        a = cand("A", [(0, 0), (24, 10), (48, 10)])
+        b = cand("B", [(0, 0), (24, 2), (48, 14)])
+        sm = smart_of([a, b], steps=48)
+        self.assertNotIn("cost_pct", sm)
+        self.assertAlmostEqual(sm["value"], sm["capital"] * (1 + sm["return_pct"] / 100), places=0)
+        # +10 % og derefter +10 % af en strategi, der står i 110: kontoen vokser 10 % to gange = 21 %
+        c = cand("C", [(0, 0), (1, 10), (2, 21)])
+        self.assertAlmostEqual(smart_of([c], steps=2)["return_pct"], 21, places=1)
+
+    def test_never_below_minus_100(self):
+        sm = smart_of([cand("A", [(0, 0), (1, -100), (2, -150)])], steps=2)
+        self.assertEqual(sm["return_pct"], -100)
 
     def test_tax_only_on_a_gain(self):
         up = smart_of([cand("A", [(0, 0), (10, 10)], tax=50)])
@@ -58,10 +64,8 @@ class SmartTests(unittest.TestCase):
         out = smart_candidates(sts, c, {"key": "bot", "name": "Bot"})
         self.assertEqual([x["name"] for x in out], ["A"])
         self.assertAlmostEqual(out[0]["curve"][-1][1], 5 - 10 * 0.1 * 0.2)       # 10 handler à 0,02 % af kontoen
-        self.assertAlmostEqual(out[0]["side"], 0.01)                               # én position à 10 % x 0,1 %
         off = smart_candidates(sts, {**c, "enabled": False}, {"key": "bot", "name": "Bot"})
         self.assertEqual(off[0]["curve"][-1][1], 5)
-        self.assertEqual(off[0]["side"], 0)
 
     def test_starts_from_its_start_time_and_uses_history_only_to_pick_the_leader(self):
         a = cand("A", [(0, 0), (24, 2), (48, 10), (60, 13)])
@@ -69,7 +73,7 @@ class SmartTests(unittest.TestCase):
         sm = smart_of([a, b], start=T0 + 48 * H)
         self.assertEqual(sm["since"], T0 + 48 * H)
         self.assertEqual(sm["following"], "A")              # A førte de 24 timer op til start
-        self.assertAlmostEqual(sm["return_pct"], 3, places=1)   # kun fremgangen efter start
+        self.assertAlmostEqual(sm["return_pct"], (113 / 110 - 1) * 100, places=1)   # kun fremgangen efter start (110 → 113)
         self.assertEqual(sm["switches"], 1)
 
     def test_start_just_now_gives_zero(self):
@@ -83,6 +87,8 @@ class SmartTests(unittest.TestCase):
             try:
                 self.assertEqual(smart_start(now=lambda: 1000.0), 1000.0)
                 self.assertEqual(smart_start(now=lambda: 5000.0), 1000.0)
+                Path(os.environ["HUB_SMART_FILE"]).write_text('{"since": 1000.0}')      # gammel beregning: start forfra
+                self.assertEqual(smart_start(now=lambda: 7000.0), 7000.0)
             finally:
                 del os.environ["HUB_SMART_FILE"]
 
