@@ -603,7 +603,8 @@ function vHandler() {
 /* Smart strategi: følger den strategi, der har tjent mest de seneste 24 timer, og skifter, så snart en anden overhaler den */
 function smartCard(sm) {
   const head = h("div", { class: "head" }, h("h2", {}, "Smart strategi"),
-    h("p", {}, "Gør præcis det samme som den strategi, der har tjent mest de seneste 24 timer, på tværs af alle botter. Overhaler en anden, skifter den med det samme."));
+    h("p", {}, sm && sm.count ? `Følger hele tiden kun den ene bedste af alle ${sm.count} strategier i ${sm.bots} botter: den, der har tjent mest de seneste 24 timer. Overhaler en anden, skifter den med det samme.`
+      : "Følger hele tiden kun den ene bedste af alle strategier i alle botter: den, der har tjent mest de seneste 24 timer. Overhaler en anden, skifter den med det samme."));
   if (!sm) return h("div", { class: "card" }, head, h("div", { class: "empty" }, "Vises, når botterne har samlet nok målinger over tid."));
   const wrap = h("div", { class: "chart", style: "height:200px" });
   const box = h("div", { class: "card" }, head,
@@ -621,13 +622,6 @@ function smartCard(sm) {
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });
   return box;
 }
-function smartCells(b) {
-  const sm = b.smart;
-  if (!sm) return [h("td", { class: "n mute" }, "–"), h("td", { class: "mute hide-m" }, "–")];
-  return [h("td", { class: "n " + tone(sm.return_pct) }, pct(sm.return_pct)),
-    h("td", { class: "name hide-m", title: `${sm.switches} skift · gebyr og slip ved skift −${nf(sm.cost_pct)} %` }, sm.following || "–", h("span", { class: "tag" }, `${sm.switches} skift`))];
-}
-
 function renderHub(rows, smart) {
   const link = (b) => h("a", { href: "#" + b.key }, b.name);
   const ranked = rows.filter((b) => b.best && b.best.name).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !(b.best && b.best.name));
@@ -656,14 +650,13 @@ function renderHub(rows, smart) {
             h("td", { class: "hide-m" }, b.trades ? (b.trades.open + b.trades.closed ? `${b.trades.open} åbne · ${b.trades.closed} lukkede` : "Ingen endnu") : "–"),
             h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));
         }))))),
-    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Bedste strategi pr. bot"), h("p", {}, "Afkast efter omkostninger, i procent af papirkontoen. Strategier uden afkast endnu tæller ikke. Smart er botens egen Smart strategi: den følger botens bedste strategi de seneste 24 timer.")),
+    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Bedste strategi pr. bot"), h("p", {}, "Afkast efter omkostninger, i procent af papirkontoen. Strategier uden afkast endnu tæller ikke.")),
       h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "hide-m" }, "#"), h("th", {}, "Bot"), h("th", {}, "Bedste strategi"), h("th", { class: "n" }, "Afkast"),
-        h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")),
-        h("th", { class: "n" }, "Smart"), h("th", { class: "hide-m" }, "Smart følger"))),
+        h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")))),
         h("tbody", {}, ranked.map((b, i) => h("tr", {}, h("td", { class: "mute hide-m" }, String(i + 1)), h("td", {}, link(b)), h("td", { class: "name" }, b.best.name),
           h("td", { class: "n " + tone(b.best.return_pct) }, pct(b.best.return_pct)),
-          h("td", { class: "n" }, String(b.best.trades), b.best.trades < 20 ? h("span", { class: "tag hide-m" }, "få") : null), smartCells(b))),
-          none.map((b) => h("tr", {}, h("td", { class: "mute hide-m" }, "–"), h("td", {}, link(b)), h("td", { class: "mute" }, "–"), h("td", { class: "n mute" }, "–"), h("td", { class: "n mute" }, "–"), smartCells(b))))))),
+          h("td", { class: "n" }, String(b.best.trades), b.best.trades < 20 ? h("span", { class: "tag hide-m" }, "få") : null))),
+          none.map((b) => h("tr", {}, h("td", { class: "mute hide-m" }, "–"), h("td", {}, link(b)), h("td", { class: "mute" }, "–"), h("td", { class: "n mute" }, "–"), h("td", { class: "n mute" }, "–"))))))),
     h("p", { class: "note" }, "Kun papirhandel med fiktive penge. Med få lukkede handler er tallene mest held eller uheld. Afkast er uden garanti for, at det holder med rigtige penge."));
 }
 

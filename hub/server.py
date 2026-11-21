@@ -299,7 +299,7 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
     cur = series[held][0] if held is not None else None
     return {"return_pct": round(keep(value), 2), "following": cur and cur["name"], "following_bot": cur and cur["bot_name"],
             "following_key": cur and cur["bot"], "lead_24h": round(scores.get(held, 0.0), 2) if held is not None else None,
-            "switches": len(switches), "recent": switches[-6:][::-1], "cost_pct": round(paid, 2), "since": round(t0),
+            "count": len(series), "bots": len({s[0]["bot"] for s in series}), "switches": len(switches), "recent": switches[-6:][::-1], "cost_pct": round(paid, 2), "since": round(t0),
             "curve": [[t, round(keep(v), 3)] for t, v in curve]}
 
 
@@ -345,7 +345,7 @@ def collecting_since(key: str, up: bool) -> float | None:
 def bot_overview(bot: dict) -> dict:
     out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
            "configured": bool(bot.get("repo")) and not bot.get("disabled"), "note": bot.get("note", ""),
-           "up": not bot.get("disabled") and port_open(bot["port"], bot_host(bot)), "mode": "live", "best": None, "smart": None}
+           "up": not bot.get("disabled") and port_open(bot["port"], bot_host(bot)), "mode": "live", "best": None}
     ln = bot.get("launch") or {}
     if ln.get("needs_env") and not os.environ.get(ln["needs_env"]):
         out["mode"] = "dashboard"     # nøgle mangler: kun gemte data, ingen live handler
@@ -360,9 +360,7 @@ def bot_overview(bot: dict) -> dict:
             data = bot_data(bot)
             c = get_costs(bot["key"], bot.get("costs"))
             out["best"] = best_of(net_strategies(data["strategies"], c))
-            out["_cands"] = smart_candidates(data["strategies"], c, bot)
-            sm = smart_of(out["_cands"])
-            out["smart"] = sm and {k: v for k, v in sm.items() if k != "curve"}
+            out["_cands"] = smart_candidates(data["strategies"], c, bot)      # bruges kun til den ene, fælles Smart strategi
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
