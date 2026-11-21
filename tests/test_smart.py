@@ -1,6 +1,9 @@
+import os
+import tempfile
 import unittest
+from pathlib import Path
 
-from hub.server import COST_DEFAULTS, smart_candidates, smart_of
+from hub.server import COST_DEFAULTS, smart_candidates, smart_of, smart_start
 
 H = 3600
 T0 = 1_700_000_000
@@ -59,6 +62,29 @@ class SmartTests(unittest.TestCase):
         off = smart_candidates(sts, {**c, "enabled": False}, {"key": "bot", "name": "Bot"})
         self.assertEqual(off[0]["curve"][-1][1], 5)
         self.assertEqual(off[0]["side"], 0)
+
+    def test_starts_from_its_start_time_and_uses_history_only_to_pick_the_leader(self):
+        a = cand("A", [(0, 0), (24, 2), (48, 10), (60, 13)])
+        b = cand("B", [(0, 0), (24, 2), (48, 3), (60, 4)])
+        sm = smart_of([a, b], start=T0 + 48 * H)
+        self.assertEqual(sm["since"], T0 + 48 * H)
+        self.assertEqual(sm["following"], "A")              # A førte de 24 timer op til start
+        self.assertAlmostEqual(sm["return_pct"], 3, places=1)   # kun fremgangen efter start
+        self.assertEqual(sm["switches"], 1)
+
+    def test_start_just_now_gives_zero(self):
+        sm = smart_of([cand("A", [(0, 0), (10, 5)])], start=T0 + 10 * H)
+        self.assertEqual(sm["return_pct"], 0)
+        self.assertEqual(sm["following"], "A")
+
+    def test_start_time_is_saved_and_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ["HUB_SMART_FILE"] = str(Path(d) / "smart.json")
+            try:
+                self.assertEqual(smart_start(now=lambda: 1000.0), 1000.0)
+                self.assertEqual(smart_start(now=lambda: 5000.0), 1000.0)
+            finally:
+                del os.environ["HUB_SMART_FILE"]
 
 
 if __name__ == "__main__":

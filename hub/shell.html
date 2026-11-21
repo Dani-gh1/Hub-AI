@@ -399,7 +399,7 @@ function render(keepScroll) {
 /* ---------- fælles dele ---------- */
 const sorted = () => [...DATA.strategies].sort((a, b) => (b.return_pct ?? -1e9) - (a.return_pct ?? -1e9));
 function colors(list) { const m = {}; let i = 0; for (const s of list) { if (i >= PALETTE.length) break; if ((s.curve || []).length > 1) m[s.key] = PALETTE[i++]; } return m; }
-function kpi(l, v, s, cls) { return h("div", { class: "card kpi" }, h("div", { class: "l" }, l), h("div", { class: "v num " + (cls || "") }, v), s && h("div", { class: "s" }, s)); }
+function kpi(l, v, s, cls, s2) { return h("div", { class: "card kpi" }, h("div", { class: "l" }, l), h("div", { class: "v num " + (cls || "") }, v), s && h("div", { class: "s" }, s), s2 && h("div", { class: "s" }, s2)); }
 
 /* ---------- OVERBLIK ---------- */
 function vOverblik() {
@@ -609,7 +609,7 @@ function smartCard(sm) {
   const wrap = h("div", { class: "chart", style: "height:200px" });
   const box = h("div", { class: "card" }, head,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
-      kpi("Afkast (netto)", pct(sm.return_pct), "siden " + when(sm.since), tone(sm.return_pct)),
+      kpi("Afkast (netto)", pct(sm.return_pct), ["kørt i ", tick(sm.since)], tone(sm.return_pct)),
       kpi("Følger nu", sm.following || "–", sm.following_bot ? `${sm.following_bot} · ${pct(sm.lead_24h)} seneste 24 t` : ""),
       kpi("Skift", String(sm.switches), `gebyr og slip ved skift: −${nf(sm.cost_pct)} %`)),
     wrap,
@@ -632,7 +632,7 @@ function renderHub(rows, smart) {
       kpi("Botter der scanner", `${rows.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))).length} af ${rows.filter((b) => b.configured).length}`,
         rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${live} kører`),
       kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct)),
-      kpi("Smart strategi", smart ? pct(smart.return_pct) : "–", smart && smart.following ? `følger ${smart.following} (${smart.following_bot})` : "samler data", smart && tone(smart.return_pct))),
+      kpi("Smart strategi", smart ? pct(smart.return_pct) : "–", smart && smart.following ? `følger ${smart.following} (${smart.following_bot})` : "samler data", smart && tone(smart.return_pct), smart && ["⏱ ", tick(smart.since)])),
     smartCard(smart),
     h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Kører de?"), h("p", {}, "Status for alle botter lige nu")),
       h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", { class: "hide-m" }, "Investerer i"), h("th", {}, "Status"),

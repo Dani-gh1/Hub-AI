@@ -248,7 +248,32 @@ def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
     return out
 
 
-def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 1500) -> dict | None:
+def smart_file() -> Path:
+    return Path(os.environ.get("HUB_SMART_FILE") or ROOT / "logs" / "smart-since.json")
+
+
+def smart_start(now=time.time) -> float:
+    """Hvornår Smart strategi startede (unix-tid). Sættes første gang og gemmes, så den fortsætter efter genstart og opdatering.
+    Slet logs/smart-since.json for at starte forfra."""
+    f = smart_file()
+    try:
+        v = json.loads(f.read_text(encoding="utf-8")).get("since")
+        if isinstance(v, (int, float)):
+            return float(v)
+    except (OSError, ValueError, AttributeError):
+        pass
+    v = round(now(), 1)
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        tmp = f.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"since": v}), encoding="utf-8")
+        tmp.replace(f)
+    except OSError:
+        pass
+    return v
+
+
+def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 1500, start: float | None = None) -> dict | None:
     """Smart strategi: gør præcis det samme som den strategi, der har tjent mest de seneste `window` sekunder, og skifter,
     så snart en anden overhaler den. Regnes igennem historikken skridt for skridt og bruger kun data, der fandtes på det tidspunkt.
     Hvert skift sælger den gamle strategis positioner og køber den nyes (gebyr og slip). Skat tages til sidst af en gevinst."""
@@ -256,9 +281,11 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
     if not series:
         return None
     t0, t1 = min(s[1][0] for s in series), max(s[1][-1] for s in series)
-    if t1 <= t0:
+    if start is not None:                 # starter fra `start`: historikken før bruges kun til at se, hvem der førte de seneste 24 timer
+        t0, t1 = start, max(t1, start)
+    elif t1 <= t0:
         return None
-    step = max(300.0, (t1 - t0) / steps)
+    step = max(60.0, (t1 - t0) / steps)
     grid = [t0 + i * step for i in range(int((t1 - t0) // step) + 1)]
     if grid[-1] < t1:
         grid.append(t1)
@@ -399,7 +426,7 @@ class Overview:
             rows = self.build()
             cands = [c for r in rows if isinstance(r, dict) for c in r.pop("_cands", None) or []]
             try:
-                smart = smart_of(cands)
+                smart = smart_of(cands, start=smart_start())
             except (ValueError, TypeError, KeyError):
                 smart = None
             with self.lock:
