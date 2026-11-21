@@ -221,7 +221,8 @@ def best_of(strategies: list[dict]) -> dict | None:
     return out
 
 
-SMART_WINDOW_S = 24 * 3600       # Smart strategi følger den strategi, der har tjent mest i dette vindue
+SMART_WINDOW_S = 15 * 60         # Smart strategi følger den strategi, der har rykket sig mest i dette vindue (hopper på med det samme)
+SMART_MARGIN = 0.01              # skifter, når en anden er mindst så mange procentpoint foran den, den følger nu
 
 
 def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
@@ -245,7 +246,7 @@ def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
     return out
 
 
-SMART_VERSION = 2
+SMART_VERSION = 3
 
 
 def smart_file() -> Path:
@@ -282,7 +283,7 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
     if not series:
         return None
     t0, t1 = min(s[1][0] for s in series), max(s[1][-1] for s in series)
-    if start is not None:                 # starter fra `start`: historikken før bruges kun til at se, hvem der førte de seneste 24 timer
+    if start is not None:                 # starter fra `start`: historikken før bruges kun til at se, hvem der førte lige før start
         t0, t1 = start, max(t1, start)
     elif t1 <= t0:
         return None
@@ -310,7 +311,7 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
                 scores[k] = v - (ys[0] if base is None else base)
         if scores:
             top = max(scores.values())
-            lead = held if held in scores and scores[held] >= top - 1e-9 else max(scores, key=scores.get)
+            lead = held if held in scores and scores[held] >= top - SMART_MARGIN else max(scores, key=scores.get)
             if lead != held:
                 switches.append({"ts": round(t), "from": series[held][0]["name"] if held is not None else None,
                                  "from_bot": series[held][0]["bot_name"] if held is not None else None,
@@ -328,7 +329,7 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
     capital, currency = max(set(caps), key=caps.count) if caps else (COST_DEFAULTS["capital"], COST_DEFAULTS["currency"])
     ret = keep((acct - 1) * 100)
     return {"return_pct": round(ret, 2), "capital": capital, "currency": currency, "value": round(capital * (1 + ret / 100), 2), "following": cur and cur["name"], "following_bot": cur and cur["bot_name"],
-            "following_key": cur and cur["bot"], "lead_24h": round(scores.get(held, 0.0), 2) if held is not None else None,
+            "following_key": cur and cur["bot"], "lead": round(scores.get(held, 0.0), 2) if held is not None else None,
             "count": len(series), "bots": len({s[0]["bot"] for s in series}), "switches": len(switches), "recent": switches[-6:][::-1], "since": round(t0),
             "curve": [[t, round(keep(v), 3)] for t, v in curve]}
 

@@ -18,7 +18,7 @@ class SmartTests(unittest.TestCase):
     def test_follows_the_best_of_the_last_24_hours_and_switches_when_overtaken(self):
         a = cand("A", [(0, 0), (24, 10), (48, 10), (72, 10)])      # stærk første døgn, så flad
         b = cand("B", [(0, 0), (24, 2), (48, 12), (72, 22)])       # overhaler A's seneste 24 timer
-        sm = smart_of([a, b], steps=72)
+        sm = smart_of([a, b], window=24 * H, steps=72)
         self.assertEqual(sm["following"], "B")
         self.assertGreaterEqual(sm["switches"], 2)                 # start i én, skift til B
         self.assertEqual(sm["recent"][0]["to"], "B")
@@ -42,6 +42,17 @@ class SmartTests(unittest.TestCase):
         # +10 % og derefter +10 % af en strategi, der står i 110: kontoen vokser 10 % to gange = 21 %
         c = cand("C", [(0, 0), (1, 10), (2, 21)])
         self.assertAlmostEqual(smart_of([c], steps=2)["return_pct"], 21, places=1)
+
+    def test_hops_on_as_soon_as_a_strategy_starts_to_rise(self):
+        # alle starter på 0; A stiger jævnt til +10 på 2,5 t og falder så til +5; B stiger stille og roligt til +2
+        a = cand("A", [(i / 4, i) for i in range(11)] + [(3, 5)])
+        b = cand("B", [(i / 4, i * 0.2) for i in range(11)] + [(3, 2)])
+        sm = smart_of([b, a], steps=400)
+        first = sm["recent"][-2]                            # første skift efter start: til A, kort efter at A begyndte at stige
+        self.assertEqual(first["to"], "A")
+        self.assertLessEqual(first["ts"] - T0, 1800)
+        self.assertGreater(sm["return_pct"], 3.5)           # fik næsten hele stigningen med: tæt på A's +5 og klart over B's +2
+        self.assertLessEqual(sm["return_pct"], 5)
 
     def test_never_below_minus_100(self):
         sm = smart_of([cand("A", [(0, 0), (1, -100), (2, -150)])], steps=2)
@@ -70,7 +81,7 @@ class SmartTests(unittest.TestCase):
     def test_starts_from_its_start_time_and_uses_history_only_to_pick_the_leader(self):
         a = cand("A", [(0, 0), (24, 2), (48, 10), (60, 13)])
         b = cand("B", [(0, 0), (24, 2), (48, 3), (60, 4)])
-        sm = smart_of([a, b], start=T0 + 48 * H)
+        sm = smart_of([a, b], window=24 * H, start=T0 + 48 * H)
         self.assertEqual(sm["since"], T0 + 48 * H)
         self.assertEqual(sm["following"], "A")              # A førte de 24 timer op til start
         self.assertAlmostEqual(sm["return_pct"], (113 / 110 - 1) * 100, places=1)   # kun fremgangen efter start (110 → 113)
