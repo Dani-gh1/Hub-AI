@@ -54,6 +54,17 @@ class SmartTests(unittest.TestCase):
         self.assertGreater(sm["return_pct"], 3.5)           # fik næsten hele stigningen med: tæt på A's +5 og klart over B's +2
         self.assertLessEqual(sm["return_pct"], 5)
 
+    def test_follows_the_strategy_with_the_highest_total_return_and_switches_when_overtaken(self):
+        best = cand("Bedst", [(0, 24.7), (1, 24.7), (2, 24.7), (3, 24.0), (4, 23.0)])
+        noisy = cand("Svinger", [(0, 1.0), (1, 5.0), (2, 3.0), (3, 6.0), (4, 5.0)])      # rykker sig meget, men er langt bagud
+        sm = smart_of([noisy, best], start=T0)
+        self.assertEqual(sm["following"], "Bedst")
+        self.assertEqual(sm["switches"], 1)                 # skifter ikke til den, der bare lige har rykket sig
+        self.assertEqual(sm["recent"][0]["to"], "Bedst")
+        late = cand("Overhaler", [(0, 10.0), (1, 15.0), (2, 25.0), (3, 30.0), (4, 35.0)])
+        sm = smart_of([best, late], steps=8)
+        self.assertEqual(sm["following"], "Overhaler")      # overhaler på samlet afkast: Smart bytter
+
     def test_never_below_minus_100(self):
         sm = smart_of([cand("A", [(0, 0), (1, -100), (2, -150)])], steps=2)
         self.assertEqual(sm["return_pct"], -100)

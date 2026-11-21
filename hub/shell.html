@@ -600,18 +600,18 @@ function vHandler() {
 }
 
 /* ---------- HUB-OVERBLIK (alle botter) ---------- */
-/* Smart strategi: følger den strategi, der har rykket sig mest de seneste 15 minutter, og hopper på med det samme */
+/* Smart strategi: følger den ene strategi med højest samlet afkast, og skifter med det samme, når en anden overhaler den */
 function smartCard(sm) {
   const head = h("div", { class: "head" }, h("h2", {}, "Smart strategi"),
-    h("p", {}, sm && sm.count ? `Følger hele tiden kun den ene bedste af alle ${sm.count} strategier i ${sm.bots} botter: den, der har rykket sig mest de seneste 15 minutter. Begynder en anden at stige, hopper den på med det samme.`
-      : "Følger hele tiden kun den ene bedste af alle strategier i alle botter: den, der har rykket sig mest de seneste 15 minutter. Begynder en anden at stige, hopper den på med det samme."));
+    h("p", {}, sm && sm.count ? `Følger hele tiden kun den ene bedste af alle ${sm.count} strategier i ${sm.bots} botter: den med højest samlet afkast (den samme som "Bedste strategi"). Overhaler en anden, skifter den med det samme.`
+      : "Følger hele tiden kun den ene bedste af alle strategier i alle botter: den med højest samlet afkast (den samme som "Bedste strategi"). Overhaler en anden, skifter den med det samme."));
   if (!sm) return h("div", { class: "card" }, head, h("div", { class: "empty" }, "Vises, når botterne har samlet nok målinger over tid."));
   const wrap = h("div", { class: "chart", style: "height:200px" });
   const box = h("div", { class: "card" }, head,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
       kpi("Afkast", pct(sm.return_pct), ["kørt i ", tick(sm.since)], tone(sm.return_pct)),
       kpi("På kontoen nu", `${nf(sm.value, 0)} ${sm.currency}`, `lagt ind: ${nf(sm.capital, 0)} ${sm.currency} · ${money(sm.value - sm.capital, sm)}`, tone(sm.value - sm.capital)),
-      kpi("Følger nu", sm.following || "–", sm.following_bot ? `${sm.following_bot} · ${pct(sm.lead)} seneste 15 min.` : ""),
+      kpi("Følger nu", sm.following || "–", sm.following_bot ? `${sm.following_bot} · ${pct(sm.lead)} i alt` : ""),
       kpi("Skift", String(sm.switches), "gange den har skiftet strategi")),
     wrap,
     sm.recent.length ? h("div", { class: "tw" }, h("table", {},

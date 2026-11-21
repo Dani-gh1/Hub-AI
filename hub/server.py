@@ -221,7 +221,7 @@ def best_of(strategies: list[dict]) -> dict | None:
     return out
 
 
-SMART_WINDOW_S = 15 * 60         # Smart strategi følger den strategi, der har rykket sig mest i dette vindue (hopper på med det samme)
+SMART_WINDOW_S = None            # None: Smart strategi følger den strategi med højest samlet afkast (som "Bedste strategi"); et tal = sekunder at måle over
 SMART_MARGIN = 0.01              # skifter, når en anden er mindst så mange procentpoint foran den, den følger nu
 
 
@@ -246,7 +246,7 @@ def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
     return out
 
 
-SMART_VERSION = 3
+SMART_VERSION = 4
 
 
 def smart_file() -> Path:
@@ -274,7 +274,7 @@ def smart_start(now=time.time) -> float:
     return v
 
 
-def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 1500, start: float | None = None) -> dict | None:
+def smart_of(cands: list[dict], window: float | None = SMART_WINDOW_S, steps: int = 1500, start: float | None = None) -> dict | None:
     """Smart strategi: gør præcis det samme som den strategi, der har tjent mest de seneste `window` sekunder, og skifter,
     så snart en anden overhaler den. Regnes igennem historikken skridt for skridt og bruger kun data, der fandtes på det tidspunkt.
     Som en rigtig konto: beløbet vokser og falder med den fulgte strategis afkast (renters rente), og afkastet er
@@ -307,8 +307,11 @@ def smart_of(cands: list[dict], window: float = SMART_WINDOW_S, steps: int = 150
         for k, (_c, _xs, ys) in enumerate(series):
             v = at(k, t)
             if v is not None:
-                base = at(k, t - window)
-                scores[k] = v - (ys[0] if base is None else base)
+                if window is None:                  # samlet afkast siden strategiens start (kurven er allerede afkast i procent)
+                    scores[k] = v
+                else:
+                    base = at(k, t - window)
+                    scores[k] = v - (ys[0] if base is None else base)
         if scores:
             top = max(scores.values())
             lead = held if held in scores and scores[held] >= top - SMART_MARGIN else max(scores, key=scores.get)
